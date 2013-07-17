@@ -1,0 +1,2409 @@
+   1              		.file	"configuration.cpp"
+   2              		.text
+   3              	.Ltext0:
+   4              		.cfi_sections	.debug_frame
+   5              		.align	2
+   6              		.global	_ZN7cConfigC2Ev
+   8              	_ZN7cConfigC2Ev:
+   9              	.LFB1:
+  10              		.file 1 "configuration.cpp"
+   1:configuration.cpp **** /*
+   2:configuration.cpp **** Small Library containing functions for configuration of the Ultimate IMU
+   3:configuration.cpp **** Ryan Owens
+   4:configuration.cpp **** 11/11/10
+   5:configuration.cpp **** */
+   6:configuration.cpp **** 
+   7:configuration.cpp **** #include "main.h"
+   8:configuration.cpp **** #include "configuration.h"
+   9:configuration.cpp **** #include <string.h>
+  10:configuration.cpp **** #include <stdio.h>
+  11:configuration.cpp **** #include <stdlib.h>
+  12:configuration.cpp **** #include "memory.h"
+  13:configuration.cpp **** #include "ADXL345.h"
+  14:configuration.cpp **** #include "ITG3200.h"
+  15:configuration.cpp **** 
+  16:configuration.cpp **** extern "C"{
+  17:configuration.cpp **** #include "rprintf.h"
+  18:configuration.cpp **** #include "serial.h"
+  19:configuration.cpp **** }
+  20:configuration.cpp **** 
+  21:configuration.cpp **** #define GLOBALOBJECT
+  22:configuration.cpp **** 
+  23:configuration.cpp **** cConfig configuration;
+  24:configuration.cpp **** char log_string[101];
+  25:configuration.cpp **** 
+  26:configuration.cpp **** cConfig::cConfig(void)
+  11              		.loc 1 26 0
+  12              		.cfi_startproc
+  13              		@ Function supports interworking.
+  14              		@ args = 0, pretend = 0, frame = 0
+  15              		@ frame_needed = 0, uses_anonymous_args = 0
+  16              		@ link register save eliminated.
+  17              	.LVL0:
+  18              	.LBB4:
+  27:configuration.cpp **** {
+  28:configuration.cpp **** 	configuration.log_sensor=1;
+  19              		.loc 1 28 0
+  20 0000 5C309FE5 		ldr	r3, .L2
+  21 0004 0110A0E3 		mov	r1, #1
+  22 0008 0010C3E5 		strb	r1, [r3, #0]
+  29:configuration.cpp **** 	configuration.log_gps=0;
+  30:configuration.cpp **** 	configuration.range_accel=1;
+  23              		.loc 1 30 0
+  24 000c 0210C3E5 		strb	r1, [r3, #2]
+  31:configuration.cpp **** 	configuration.range_compass=1;
+  25              		.loc 1 31 0
+  26 0010 0310C3E5 		strb	r1, [r3, #3]
+  27              	.LVL1:
+  32:configuration.cpp **** 	for(int i=0; i<6; i++)configuration.gps_messages[i]=0;
+  33:configuration.cpp **** 	configuration.gps_messages[4]=1;
+  28              		.loc 1 33 0
+  29 0014 0810C3E5 		strb	r1, [r3, #8]
+  34:configuration.cpp **** 	configuration.sd_enabled=1;
+  30              		.loc 1 34 0
+  31 0018 0A10C3E5 		strb	r1, [r3, #10]
+  35:configuration.cpp **** 	configuration.output_euler=1;
+  32              		.loc 1 35 0
+  33 001c 0B10C3E5 		strb	r1, [r3, #11]
+  36:configuration.cpp **** 	configuration.output_messages=2;
+  34              		.loc 1 36 0
+  35 0020 0210A0E3 		mov	r1, #2
+  29:configuration.cpp **** 	configuration.log_gps=0;
+  36              		.loc 1 29 0
+  37 0024 0020A0E3 		mov	r2, #0
+  38              		.loc 1 36 0
+  39 0028 0C10C3E5 		strb	r1, [r3, #12]
+  37:configuration.cpp **** 	configuration.cal_ax=0;
+  38:configuration.cpp **** 	configuration.cal_ay=0;
+  39:configuration.cpp **** 	configuration.cal_az=0;
+  40              		.loc 1 39 0
+  41 002c 0010A0E3 		mov	r1, #0
+  29:configuration.cpp **** 	configuration.log_gps=0;
+  42              		.loc 1 29 0
+  43 0030 0120C3E5 		strb	r2, [r3, #1]
+  44              	.LBB5:
+  32:configuration.cpp **** 	for(int i=0; i<6; i++)configuration.gps_messages[i]=0;
+  45              		.loc 1 32 0
+  46 0034 0420C3E5 		strb	r2, [r3, #4]
+  47              	.LVL2:
+  48 0038 0520C3E5 		strb	r2, [r3, #5]
+  49              	.LVL3:
+  50 003c 0620C3E5 		strb	r2, [r3, #6]
+  51              	.LVL4:
+  52 0040 0720C3E5 		strb	r2, [r3, #7]
+  53              	.LVL5:
+  54 0044 0920C3E5 		strb	r2, [r3, #9]
+  55              	.LVL6:
+  56              	.LBE5:
+  37:configuration.cpp **** 	configuration.cal_ax=0;
+  57              		.loc 1 37 0
+  58 0048 102083E5 		str	r2, [r3, #16]
+  38:configuration.cpp **** 	configuration.cal_ay=0;
+  59              		.loc 1 38 0
+  60 004c 142083E5 		str	r2, [r3, #20]
+  61              		.loc 1 39 0
+  62 0050 181083E5 		str	r1, [r3, #24]	@ float
+  40:configuration.cpp **** 	configuration.cal_gx=0;
+  63              		.loc 1 40 0
+  64 0054 1C2083E5 		str	r2, [r3, #28]
+  41:configuration.cpp **** 	configuration.cal_gy=0;
+  65              		.loc 1 41 0
+  66 0058 202083E5 		str	r2, [r3, #32]
+  42:configuration.cpp **** 	configuration.cal_gz=0;
+  67              		.loc 1 42 0
+  68 005c 242083E5 		str	r2, [r3, #36]
+  69              	.LBE4:
+  43:configuration.cpp **** }
+  70              		.loc 1 43 0
+  71 0060 1EFF2FE1 		bx	lr
+  72              	.L3:
+  73              		.align	2
+  74              	.L2:
+  75 0064 00000000 		.word	.LANCHOR0
+  76              		.cfi_endproc
+  77              	.LFE1:
+  79              		.align	2
+  80              		.global	_Z14readConfigFile7cMemory
+  82              	_Z14readConfigFile7cMemory:
+  83              	.LFB5:
+  44:configuration.cpp **** 
+  45:configuration.cpp **** void configMenu(cMemory configData){
+  46:configuration.cpp **** 	char selection=0;
+  47:configuration.cpp **** 	char exit=0;
+  48:configuration.cpp **** 
+  49:configuration.cpp **** 	while(!exit){
+  50:configuration.cpp **** 		rprintf("\n- Ultimate IMU Configuration -\n");
+  51:configuration.cpp **** 		rprintf("- Version %d.%d -\n", major_version, minor_version);
+  52:configuration.cpp **** 		rprintf("_______________________________\n");
+  53:configuration.cpp **** 		rprintf("1.) Log Sensor Data ");
+  54:configuration.cpp **** 			if(configuration.log_sensor)rprintf("(Enabled)\n");
+  55:configuration.cpp **** 			else rprintf("(Disabled\n");
+  56:configuration.cpp **** 		rprintf("2.) Log GPS Data ");
+  57:configuration.cpp **** 			if(configuration.log_gps)rprintf("(Enabled)\n");
+  58:configuration.cpp **** 			else rprintf("(Disabled)\n");		
+  59:configuration.cpp **** 		rprintf("3.) Accelerometer Range (+/-");
+  60:configuration.cpp **** 			if(configuration.range_accel==0)rprintf("2g)\n");
+  61:configuration.cpp **** 			else if(configuration.range_accel==1)rprintf("4g)\n");
+  62:configuration.cpp **** 			else if(configuration.range_accel==2)rprintf("8g)\n");
+  63:configuration.cpp **** 			else rprintf("16g)\n");
+  64:configuration.cpp **** 		rprintf("4.) Compass Range (+/-");
+  65:configuration.cpp **** 			switch(configuration.range_compass){
+  66:configuration.cpp **** 				case 0:rprintf("0.7");
+  67:configuration.cpp **** 					break;
+  68:configuration.cpp **** 				case 1:rprintf("1.0");
+  69:configuration.cpp **** 					break;
+  70:configuration.cpp **** 				case 2:rprintf("1.5");
+  71:configuration.cpp **** 					break;
+  72:configuration.cpp **** 				case 3:rprintf("2.0");
+  73:configuration.cpp **** 					break;
+  74:configuration.cpp **** 				case 4:rprintf("3.2");
+  75:configuration.cpp **** 					break;
+  76:configuration.cpp **** 				case 5:rprintf("3.8");
+  77:configuration.cpp **** 					break;
+  78:configuration.cpp **** 				case 6:rprintf("4.5");
+  79:configuration.cpp **** 					break;
+  80:configuration.cpp **** 				case 7:rprintf("6.5");
+  81:configuration.cpp **** 					break;
+  82:configuration.cpp **** 				default: 
+  83:configuration.cpp **** 					break;
+  84:configuration.cpp **** 			}
+  85:configuration.cpp **** 			rprintf("Ga)\n");
+  86:configuration.cpp **** 		rprintf("5.) GPS Messages (");
+  87:configuration.cpp **** 			if(configuration.gps_messages[0])rprintf("GGA, ");
+  88:configuration.cpp **** 			if(configuration.gps_messages[1])rprintf("GLL, ");
+  89:configuration.cpp **** 			if(configuration.gps_messages[2])rprintf("GSA, ");
+  90:configuration.cpp **** 			if(configuration.gps_messages[3])rprintf("GSV, ");
+  91:configuration.cpp **** 			if(configuration.gps_messages[4])rprintf("RMC, ");
+  92:configuration.cpp **** 			if(configuration.gps_messages[5])rprintf("VTG, ");
+  93:configuration.cpp **** 			rprintf(")\n");
+  94:configuration.cpp **** 		rprintf("6.) Calibrate IMU\n");
+  95:configuration.cpp **** 		rprintf("7.) Sensor Output (");
+  96:configuration.cpp **** 			if(configuration.output_euler)rprintf("Euler)\n");
+  97:configuration.cpp **** 			else rprintf("Raw)\n");
+  98:configuration.cpp **** 		rprintf("8.) Serial Output Messages (");
+  99:configuration.cpp **** 			if(configuration.output_messages==0)rprintf("None)\n");
+ 100:configuration.cpp **** 			else if(configuration.output_messages==1)rprintf("Sensor Data)\n");
+ 101:configuration.cpp **** 			else if(configuration.output_messages==2)rprintf("GPS Data)\n");
+ 102:configuration.cpp **** 			else rprintf("Sensor and GPS data)\n");
+ 103:configuration.cpp **** 		rprintf("9.) Exit\n");
+ 104:configuration.cpp **** 		
+ 105:configuration.cpp **** 		rprintf("\nSelection: ");
+ 106:configuration.cpp **** 		selection=getc0();
+ 107:configuration.cpp **** 		rprintf("%c\n\n", selection);
+ 108:configuration.cpp **** 		
+ 109:configuration.cpp **** 		switch (selection)
+ 110:configuration.cpp **** 		{
+ 111:configuration.cpp **** 			case '1':
+ 112:configuration.cpp **** 				rprintf("\nLog Sensor Data\n");
+ 113:configuration.cpp **** 				selection = enablePrompt();
+ 114:configuration.cpp **** 				if(selection > '0')configuration.log_sensor=1;
+ 115:configuration.cpp **** 				else configuration.log_sensor=0;
+ 116:configuration.cpp **** 				break;
+ 117:configuration.cpp **** 		
+ 118:configuration.cpp **** 			case '2':
+ 119:configuration.cpp **** 				rprintf("\nLog GPS Data\n");
+ 120:configuration.cpp **** 				selection=enablePrompt();
+ 121:configuration.cpp **** 				if(selection > '0')configuration.log_gps=1;
+ 122:configuration.cpp **** 				else configuration.log_gps=0;				
+ 123:configuration.cpp **** 				break;
+ 124:configuration.cpp **** 		
+ 125:configuration.cpp **** 			case '3':
+ 126:configuration.cpp **** 				rprintf("\nAccelerometer Range\n");
+ 127:configuration.cpp **** 				rprintf("Select Range:\n1.)2g\n2.)4g\n3.)8g\n4.)16g\n");
+ 128:configuration.cpp **** 				rprintf("Selection: ");
+ 129:configuration.cpp **** 				selection = getc0();
+ 130:configuration.cpp **** 				rprintf("%c\n", selection);
+ 131:configuration.cpp **** 				if(selection > '0' && selection < '5'){
+ 132:configuration.cpp **** 					selection -='0';
+ 133:configuration.cpp **** 					configuration.range_accel=selection-1;	//Get the bit setting for the g-scale
+ 134:configuration.cpp **** 				}
+ 135:configuration.cpp **** 				break;
+ 136:configuration.cpp **** 			
+ 137:configuration.cpp **** 			case '4':
+ 138:configuration.cpp **** 				rprintf("\nCompass Range\n");
+ 139:configuration.cpp **** 				rprintf("Select Range:\n1.) +/-0.7Ga\n2.) +/-1.0Ga\n3.) +/-1.5Ga\n 4.) +/-2.0Ga\n");
+ 140:configuration.cpp **** 				rprintf("5.) +/-3.2Ga\n6.) +/-3.8Ga\n7.) +/-4.5Ga\n8.) +/-6.5Ga\n");
+ 141:configuration.cpp **** 				rprintf("Selection: ");
+ 142:configuration.cpp **** 				selection = getc0();
+ 143:configuration.cpp **** 				rprintf("%c\n", selection);
+ 144:configuration.cpp **** 				if(selection > '0' && selection < '9'){
+ 145:configuration.cpp **** 					selection -='0';
+ 146:configuration.cpp **** 					configuration.range_compass = selection -1;
+ 147:configuration.cpp **** 				}
+ 148:configuration.cpp **** 				break;
+ 149:configuration.cpp **** 				
+ 150:configuration.cpp **** 			case '5':
+ 151:configuration.cpp **** 				rprintf("\nConfigure GPS Messages\n");
+ 152:configuration.cpp **** 				for(int message=0; message<6; message++)
+ 153:configuration.cpp **** 				{
+ 154:configuration.cpp **** 					if(message==0)rprintf("GGA Messages ");
+ 155:configuration.cpp **** 					if(message==1)rprintf("GLL Messages ");
+ 156:configuration.cpp **** 					if(message==2)rprintf("GSA Messages ");
+ 157:configuration.cpp **** 					if(message==3)rprintf("GSV Messages ");
+ 158:configuration.cpp **** 					if(message==4)rprintf("RMC Messages ");
+ 159:configuration.cpp **** 					if(message==5)rprintf("VTG Messages ");
+ 160:configuration.cpp **** 					rprintf("%d\n", configuration.gps_messages[message]);
+ 161:configuration.cpp **** 					selection = enablePrompt();
+ 162:configuration.cpp **** 					if(selection > '0')configuration.gps_messages[message]=1;
+ 163:configuration.cpp **** 					else configuration.gps_messages[message]=0;
+ 164:configuration.cpp **** 				}
+ 165:configuration.cpp **** 				break;
+ 166:configuration.cpp **** 				
+ 167:configuration.cpp **** 			case '6':
+ 168:configuration.cpp **** 				rprintf("\nCalibration\n");
+ 169:configuration.cpp **** 				rprintf("Set the IMU in it's normal orientation and protect it from any movement.\n");
+ 170:configuration.cpp **** 				rprintf("Press any key to start calibration\n");
+ 171:configuration.cpp **** 				rprintf("When calibration is finished, the config menu will be presented and you may\n");
+ 172:configuration.cpp **** 				rprintf("continue normal operation.\n");
+ 173:configuration.cpp **** 				selection = getc0();
+ 174:configuration.cpp **** 				rprintf("Starting Calibration, don't move the device!\n");
+ 175:configuration.cpp **** 				accelerometer.calibrate();
+ 176:configuration.cpp **** 				gyro.calibrate();
+ 177:configuration.cpp **** 				configuration.cal_ax=accelerometer.getXcal();
+ 178:configuration.cpp **** 				configuration.cal_ay=accelerometer.getYcal();
+ 179:configuration.cpp **** 				configuration.cal_az=accelerometer.getZcal();
+ 180:configuration.cpp **** 				configuration.cal_gx=gyro.getXcal();
+ 181:configuration.cpp **** 				configuration.cal_gy=gyro.getYcal();
+ 182:configuration.cpp **** 				configuration.cal_gz=gyro.getZcal();
+ 183:configuration.cpp **** 				rprintf("Finished!\n");
+ 184:configuration.cpp **** 				break;
+ 185:configuration.cpp **** 				
+ 186:configuration.cpp **** 			case '7':
+ 187:configuration.cpp **** 				rprintf("\nChoose 'enable' for Euler Angle Output or 'disable' for Raw Output\n");
+ 188:configuration.cpp **** 				rprintf("Setting will apply to the log file data (if enabled) and the serial output (if enabled
+ 189:configuration.cpp **** 				selection = enablePrompt();
+ 190:configuration.cpp **** 				if(selection == '0')configuration.output_euler=0;
+ 191:configuration.cpp **** 				else configuration.output_euler=1;
+ 192:configuration.cpp **** 				break;
+ 193:configuration.cpp **** 		
+ 194:configuration.cpp **** 			case '8':
+ 195:configuration.cpp **** 				rprintf("\nChoose which messages to send to the serial port.\n");
+ 196:configuration.cpp **** 				rprintf("Caution: The more messages that are enabled, the slower the sensors are updated!\n");
+ 197:configuration.cpp **** 				rprintf("1.) No messages\n2.) Sensor Data\n3.) GPS Data\n4.) Sensor and GPS Data\n");
+ 198:configuration.cpp **** 				rprintf("Selection: ");
+ 199:configuration.cpp **** 				selection = getc0();
+ 200:configuration.cpp **** 				rprintf("%c\n", selection);
+ 201:configuration.cpp **** 				if(selection > '0' && selection < '5'){
+ 202:configuration.cpp **** 					selection -= '0';
+ 203:configuration.cpp **** 					configuration.output_messages = selection -1;
+ 204:configuration.cpp **** 				}
+ 205:configuration.cpp **** 				break;
+ 206:configuration.cpp **** 			default:
+ 207:configuration.cpp **** 				exit=1;
+ 208:configuration.cpp **** 				break;
+ 209:configuration.cpp **** 		}
+ 210:configuration.cpp **** 	}
+ 211:configuration.cpp **** 	configData.close();
+ 212:configuration.cpp **** 	configData.open("configuration.txt");
+ 213:configuration.cpp **** 	saveConfigData(configData);
+ 214:configuration.cpp **** }
+ 215:configuration.cpp **** 
+ 216:configuration.cpp **** void createConfigFile(cMemory configData){
+ 217:configuration.cpp **** 	configData.create("configuration.txt");
+ 218:configuration.cpp **** 	
+ 219:configuration.cpp **** 	configData.open();
+ 220:configuration.cpp **** 	saveConfigData(configData);
+ 221:configuration.cpp **** 	configData.close();
+ 222:configuration.cpp **** }
+ 223:configuration.cpp **** 
+ 224:configuration.cpp **** void readConfigFile(cMemory configData){
+  84              		.loc 1 224 0
+  85              		.cfi_startproc
+  86              		@ Function supports interworking.
+  87              		@ args = 36, pretend = 16, frame = 24
+  88              		@ frame_needed = 0, uses_anonymous_args = 0
+  89              	.LVL7:
+  90 0068 10D04DE2 		sub	sp, sp, #16
+  91              	.LCFI0:
+  92              		.cfi_def_cfa_offset 16
+  93 006c F0402DE9 		stmfd	sp!, {r4, r5, r6, r7, lr}
+  94              	.LCFI1:
+  95              		.cfi_def_cfa_offset 36
+  96              		.cfi_offset 14, -20
+  97              		.cfi_offset 7, -24
+  98              		.cfi_offset 6, -28
+  99              		.cfi_offset 5, -32
+ 100              		.cfi_offset 4, -36
+ 101 0070 18D04DE2 		sub	sp, sp, #24
+ 102              	.LCFI2:
+ 103              		.cfi_def_cfa_offset 60
+ 104              		.loc 1 224 0
+ 105 0074 2C408DE2 		add	r4, sp, #44
+ 106              	.LBB6:
+ 225:configuration.cpp **** 	char fileData[20];
+ 226:configuration.cpp **** 	char error=0;
+ 227:configuration.cpp **** 	int index=0;
+ 228:configuration.cpp **** 	char delim[]="=,";
+ 107              		.loc 1 228 0
+ 108 0078 14608DE2 		add	r6, sp, #20
+ 109              	.LBE6:
+ 224:configuration.cpp **** void readConfigFile(cMemory configData){
+ 110              		.loc 1 224 0
+ 111 007c 0F0084E8 		stmia	r4, {r0, r1, r2, r3}
+ 112              	.LBB7:
+ 113              		.loc 1 228 0
+ 114 0080 0320A0E3 		mov	r2, #3
+ 115 0084 7C139FE5 		ldr	r1, .L32
+ 116 0088 0600A0E1 		mov	r0, r6
+ 117 008c FEFFFFEB 		bl	memcpy
+ 118              	.LVL8:
+ 229:configuration.cpp **** 	char * result = NULL;
+ 230:configuration.cpp **** 
+ 231:configuration.cpp **** 
+ 232:configuration.cpp **** 	configData.open("configuration.txt");
+ 119              		.loc 1 232 0
+ 120 0090 0400A0E1 		mov	r0, r4
+ 121 0094 70139FE5 		ldr	r1, .L32+4
+ 122 0098 FEFFFFEB 		bl	_ZN7cMemory4openEPc
+ 233:configuration.cpp **** 	
+ 234:configuration.cpp **** 	//Get the 'Log Sensor Data' parameter
+ 235:configuration.cpp **** 	if(!configData.readLine(fileData))error=1;
+ 123              		.loc 1 235 0
+ 124 009c 0400A0E1 		mov	r0, r4
+ 125 00a0 0D10A0E1 		mov	r1, sp
+ 126 00a4 FEFFFFEB 		bl	_ZN7cMemory8readLineEPc
+ 236:configuration.cpp **** 	result = strtok(fileData, delim);
+ 127              		.loc 1 236 0
+ 128 00a8 0610A0E1 		mov	r1, r6
+ 235:configuration.cpp **** 	if(!configData.readLine(fileData))error=1;
+ 129              		.loc 1 235 0
+ 130 00ac 0050A0E1 		mov	r5, r0
+ 131              	.LVL9:
+ 132              		.loc 1 236 0
+ 133 00b0 0D00A0E1 		mov	r0, sp
+ 134              	.LVL10:
+ 135 00b4 FEFFFFEB 		bl	strtok
+ 136              	.LVL11:
+ 237:configuration.cpp **** 	result = strtok(NULL, delim);
+ 137              		.loc 1 237 0
+ 138 00b8 0610A0E1 		mov	r1, r6
+ 139 00bc 0000A0E3 		mov	r0, #0
+ 140 00c0 FEFFFFEB 		bl	strtok
+ 238:configuration.cpp **** 	configuration.log_sensor = strtol((const char *)result, NULL, 10);
+ 141              		.loc 1 238 0
+ 142 00c4 0010A0E3 		mov	r1, #0
+ 143 00c8 0A20A0E3 		mov	r2, #10
+ 144 00cc FEFFFFEB 		bl	strtol
+ 145 00d0 38339FE5 		ldr	r3, .L32+8
+ 239:configuration.cpp **** 
+ 240:configuration.cpp **** 	//Get the 'Log GPS Data' parameter
+ 241:configuration.cpp **** 	if(!configData.readLine(fileData))error=1;
+ 146              		.loc 1 241 0
+ 147 00d4 0D10A0E1 		mov	r1, sp
+ 238:configuration.cpp **** 	configuration.log_sensor = strtol((const char *)result, NULL, 10);
+ 148              		.loc 1 238 0
+ 149 00d8 0000C3E5 		strb	r0, [r3, #0]
+ 150              		.loc 1 241 0
+ 151 00dc 0400A0E1 		mov	r0, r4
+ 152 00e0 FEFFFFEB 		bl	_ZN7cMemory8readLineEPc
+ 153 00e4 000050E3 		cmp	r0, #0
+ 154 00e8 0140A003 		moveq	r4, #1
+ 155 00ec 0100000A 		beq	.L5
+ 226:configuration.cpp **** 	char error=0;
+ 156              		.loc 1 226 0
+ 157 00f0 014075E2 		rsbs	r4, r5, #1
+ 158 00f4 0040A033 		movcc	r4, #0
+ 159              	.L5:
+ 160              	.LVL12:
+ 242:configuration.cpp **** 	result = strtok(fileData, delim);
+ 161              		.loc 1 242 0
+ 162 00f8 0610A0E1 		mov	r1, r6
+ 163 00fc 0D00A0E1 		mov	r0, sp
+ 164 0100 FEFFFFEB 		bl	strtok
+ 243:configuration.cpp **** 	result = strtok(NULL, delim);
+ 165              		.loc 1 243 0
+ 166 0104 0610A0E1 		mov	r1, r6
+ 167 0108 0000A0E3 		mov	r0, #0
+ 168 010c FEFFFFEB 		bl	strtok
+ 244:configuration.cpp **** 	configuration.log_gps = strtol((const char *)result, NULL, 10);	
+ 169              		.loc 1 244 0
+ 170 0110 0A20A0E3 		mov	r2, #10
+ 171 0114 0010A0E3 		mov	r1, #0
+ 172 0118 FEFFFFEB 		bl	strtol
+ 173 011c EC729FE5 		ldr	r7, .L32+8
+ 245:configuration.cpp **** 
+ 246:configuration.cpp **** 	//Get the 'Accelerometer Range' parameter
+ 247:configuration.cpp **** 	if(!configData.readLine(fileData))error=1;
+ 174              		.loc 1 247 0
+ 175 0120 0D10A0E1 		mov	r1, sp
+ 244:configuration.cpp **** 	configuration.log_gps = strtol((const char *)result, NULL, 10);	
+ 176              		.loc 1 244 0
+ 177 0124 0100C7E5 		strb	r0, [r7, #1]
+ 178              		.loc 1 247 0
+ 179 0128 2C008DE2 		add	r0, sp, #44
+ 180 012c FEFFFFEB 		bl	_ZN7cMemory8readLineEPc
+ 248:configuration.cpp **** 	result = strtok(fileData, delim);
+ 181              		.loc 1 248 0
+ 182 0130 0610A0E1 		mov	r1, r6
+ 247:configuration.cpp **** 	if(!configData.readLine(fileData))error=1;
+ 183              		.loc 1 247 0
+ 184 0134 000050E3 		cmp	r0, #0
+ 185              		.loc 1 248 0
+ 186 0138 0D00A0E1 		mov	r0, sp
+ 247:configuration.cpp **** 	if(!configData.readLine(fileData))error=1;
+ 187              		.loc 1 247 0
+ 188 013c 0140A003 		moveq	r4, #1
+ 189              	.LVL13:
+ 190              		.loc 1 248 0
+ 191 0140 FEFFFFEB 		bl	strtok
+ 249:configuration.cpp **** 	result = strtok(NULL, delim);
+ 192              		.loc 1 249 0
+ 193 0144 0610A0E1 		mov	r1, r6
+ 194 0148 0000A0E3 		mov	r0, #0
+ 195 014c FEFFFFEB 		bl	strtok
+ 250:configuration.cpp **** 	configuration.range_accel = strtol((const char *)result, NULL, 10);	
+ 196              		.loc 1 250 0
+ 197 0150 0A20A0E3 		mov	r2, #10
+ 198 0154 0010A0E3 		mov	r1, #0
+ 199 0158 FEFFFFEB 		bl	strtol
+ 251:configuration.cpp **** 
+ 252:configuration.cpp **** 	//Get the 'Compass Range' parameter
+ 253:configuration.cpp **** 	if(!configData.readLine(fileData))error=1;
+ 200              		.loc 1 253 0
+ 201 015c 0D10A0E1 		mov	r1, sp
+ 250:configuration.cpp **** 	configuration.range_accel = strtol((const char *)result, NULL, 10);	
+ 202              		.loc 1 250 0
+ 203 0160 0200C7E5 		strb	r0, [r7, #2]
+ 204              		.loc 1 253 0
+ 205 0164 2C008DE2 		add	r0, sp, #44
+ 206 0168 FEFFFFEB 		bl	_ZN7cMemory8readLineEPc
+ 254:configuration.cpp **** 	result = strtok(fileData, delim);
+ 207              		.loc 1 254 0
+ 208 016c 0610A0E1 		mov	r1, r6
+ 253:configuration.cpp **** 	if(!configData.readLine(fileData))error=1;
+ 209              		.loc 1 253 0
+ 210 0170 000050E3 		cmp	r0, #0
+ 211              		.loc 1 254 0
+ 212 0174 0D00A0E1 		mov	r0, sp
+ 253:configuration.cpp **** 	if(!configData.readLine(fileData))error=1;
+ 213              		.loc 1 253 0
+ 214 0178 0140A003 		moveq	r4, #1
+ 215              	.LVL14:
+ 216              		.loc 1 254 0
+ 217 017c FEFFFFEB 		bl	strtok
+ 255:configuration.cpp **** 	result = strtok(NULL, delim);
+ 218              		.loc 1 255 0
+ 219 0180 0610A0E1 		mov	r1, r6
+ 220 0184 0000A0E3 		mov	r0, #0
+ 221 0188 FEFFFFEB 		bl	strtok
+ 256:configuration.cpp **** 	configuration.range_compass = strtol((const char *)result, NULL, 10);
+ 222              		.loc 1 256 0
+ 223 018c 0A20A0E3 		mov	r2, #10
+ 224 0190 0010A0E3 		mov	r1, #0
+ 225 0194 FEFFFFEB 		bl	strtol
+ 257:configuration.cpp **** 
+ 258:configuration.cpp **** 	//Get the 'Enabled GPS Messages' parameter
+ 259:configuration.cpp **** 	if(!configData.readLine(fileData))error=1;
+ 226              		.loc 1 259 0
+ 227 0198 0D10A0E1 		mov	r1, sp
+ 256:configuration.cpp **** 	configuration.range_compass = strtol((const char *)result, NULL, 10);
+ 228              		.loc 1 256 0
+ 229 019c 0300E7E5 		strb	r0, [r7, #3]!
+ 230              		.loc 1 259 0
+ 231 01a0 2C008DE2 		add	r0, sp, #44
+ 232 01a4 FEFFFFEB 		bl	_ZN7cMemory8readLineEPc
+ 260:configuration.cpp **** 	result = strtok(fileData, delim);
+ 233              		.loc 1 260 0
+ 234 01a8 0610A0E1 		mov	r1, r6
+ 259:configuration.cpp **** 	if(!configData.readLine(fileData))error=1;
+ 235              		.loc 1 259 0
+ 236 01ac 000050E3 		cmp	r0, #0
+ 237              		.loc 1 260 0
+ 238 01b0 0D00A0E1 		mov	r0, sp
+ 259:configuration.cpp **** 	if(!configData.readLine(fileData))error=1;
+ 239              		.loc 1 259 0
+ 240 01b4 0140A003 		moveq	r4, #1
+ 241              	.LVL15:
+ 242              		.loc 1 260 0
+ 243 01b8 FEFFFFEB 		bl	strtok
+ 244 01bc 0050A0E1 		mov	r5, r0
+ 245              	.LVL16:
+ 261:configuration.cpp **** 	while(result!=NULL){
+ 246              		.loc 1 261 0
+ 247 01c0 070000EA 		b	.L9
+ 248              	.LVL17:
+ 249              	.L10:
+ 262:configuration.cpp **** 		result = strtok(NULL, delim);
+ 250              		.loc 1 262 0
+ 251 01c4 0610A0E1 		mov	r1, r6
+ 252 01c8 0000A0E3 		mov	r0, #0
+ 253 01cc FEFFFFEB 		bl	strtok
+ 263:configuration.cpp **** 		configuration.gps_messages[index++]=strtol((const char *)result, NULL, 10);
+ 254              		.loc 1 263 0
+ 255 01d0 0010A0E3 		mov	r1, #0
+ 256 01d4 0A20A0E3 		mov	r2, #10
+ 262:configuration.cpp **** 		result = strtok(NULL, delim);
+ 257              		.loc 1 262 0
+ 258 01d8 0050A0E1 		mov	r5, r0
+ 259              	.LVL18:
+ 260              		.loc 1 263 0
+ 261 01dc FEFFFFEB 		bl	strtol
+ 262              	.LVL19:
+ 263 01e0 0100E7E5 		strb	r0, [r7, #1]!
+ 264              	.L9:
+ 261:configuration.cpp **** 	while(result!=NULL){
+ 265              		.loc 1 261 0 discriminator 1
+ 266 01e4 000055E3 		cmp	r5, #0
+ 267 01e8 F5FFFF1A 		bne	.L10
+ 264:configuration.cpp **** 	}
+ 265:configuration.cpp **** 	
+ 266:configuration.cpp **** 	//Get the 'Euler Format' parameter
+ 267:configuration.cpp **** 	if(!configData.readLine(fileData))error=1;
+ 268              		.loc 1 267 0
+ 269 01ec 0D10A0E1 		mov	r1, sp
+ 270 01f0 2C008DE2 		add	r0, sp, #44
+ 271 01f4 FEFFFFEB 		bl	_ZN7cMemory8readLineEPc
+ 268:configuration.cpp **** 	result = strtok(fileData, delim);
+ 272              		.loc 1 268 0
+ 273 01f8 14108DE2 		add	r1, sp, #20
+ 267:configuration.cpp **** 	if(!configData.readLine(fileData))error=1;
+ 274              		.loc 1 267 0
+ 275 01fc 000050E3 		cmp	r0, #0
+ 276              		.loc 1 268 0
+ 277 0200 0D00A0E1 		mov	r0, sp
+ 267:configuration.cpp **** 	if(!configData.readLine(fileData))error=1;
+ 278              		.loc 1 267 0
+ 279 0204 0140A003 		moveq	r4, #1
+ 280              	.LVL20:
+ 281              		.loc 1 268 0
+ 282 0208 FEFFFFEB 		bl	strtok
+ 283              	.LVL21:
+ 269:configuration.cpp **** 	result = strtok(NULL, delim);
+ 284              		.loc 1 269 0
+ 285 020c 14108DE2 		add	r1, sp, #20
+ 286 0210 0500A0E1 		mov	r0, r5
+ 287 0214 FEFFFFEB 		bl	strtok
+ 270:configuration.cpp **** 	configuration.output_euler = strtol((const char *)result, NULL, 10);
+ 288              		.loc 1 270 0
+ 289 0218 0A20A0E3 		mov	r2, #10
+ 290 021c 0510A0E1 		mov	r1, r5
+ 291 0220 FEFFFFEB 		bl	strtol
+ 292 0224 E4619FE5 		ldr	r6, .L32+8
+ 271:configuration.cpp **** 	
+ 272:configuration.cpp **** 	//Get the 'Output messages' parameter
+ 273:configuration.cpp **** 	if(!configData.readLine(fileData))error=1;
+ 293              		.loc 1 273 0
+ 294 0228 0D10A0E1 		mov	r1, sp
+ 270:configuration.cpp **** 	configuration.output_euler = strtol((const char *)result, NULL, 10);
+ 295              		.loc 1 270 0
+ 296 022c 0B00C6E5 		strb	r0, [r6, #11]
+ 297              		.loc 1 273 0
+ 298 0230 2C008DE2 		add	r0, sp, #44
+ 299 0234 FEFFFFEB 		bl	_ZN7cMemory8readLineEPc
+ 274:configuration.cpp **** 	result = strtok(fileData, delim);
+ 300              		.loc 1 274 0
+ 301 0238 14108DE2 		add	r1, sp, #20
+ 273:configuration.cpp **** 	if(!configData.readLine(fileData))error=1;
+ 302              		.loc 1 273 0
+ 303 023c 000050E3 		cmp	r0, #0
+ 304              		.loc 1 274 0
+ 305 0240 0D00A0E1 		mov	r0, sp
+ 273:configuration.cpp **** 	if(!configData.readLine(fileData))error=1;
+ 306              		.loc 1 273 0
+ 307 0244 0140A003 		moveq	r4, #1
+ 308              	.LVL22:
+ 309              		.loc 1 274 0
+ 310 0248 FEFFFFEB 		bl	strtok
+ 275:configuration.cpp **** 	result = strtok(NULL, delim);
+ 311              		.loc 1 275 0
+ 312 024c 14108DE2 		add	r1, sp, #20
+ 313 0250 0500A0E1 		mov	r0, r5
+ 314 0254 FEFFFFEB 		bl	strtok
+ 276:configuration.cpp **** 	configuration.output_messages = strtol((const char *)result, NULL, 10);
+ 315              		.loc 1 276 0
+ 316 0258 0A20A0E3 		mov	r2, #10
+ 317 025c 0510A0E1 		mov	r1, r5
+ 318 0260 FEFFFFEB 		bl	strtol
+ 277:configuration.cpp **** 	
+ 278:configuration.cpp **** 	//Get the 'Accel X Calibration' parameter
+ 279:configuration.cpp **** 	if(!configData.readLine(fileData))error=1;
+ 319              		.loc 1 279 0
+ 320 0264 0D10A0E1 		mov	r1, sp
+ 276:configuration.cpp **** 	configuration.output_messages = strtol((const char *)result, NULL, 10);
+ 321              		.loc 1 276 0
+ 322 0268 0C00C6E5 		strb	r0, [r6, #12]
+ 323              		.loc 1 279 0
+ 324 026c 2C008DE2 		add	r0, sp, #44
+ 325 0270 FEFFFFEB 		bl	_ZN7cMemory8readLineEPc
+ 280:configuration.cpp **** 	result = strtok(fileData, delim);
+ 326              		.loc 1 280 0
+ 327 0274 14108DE2 		add	r1, sp, #20
+ 279:configuration.cpp **** 	if(!configData.readLine(fileData))error=1;
+ 328              		.loc 1 279 0
+ 329 0278 000050E3 		cmp	r0, #0
+ 330              		.loc 1 280 0
+ 331 027c 0D00A0E1 		mov	r0, sp
+ 279:configuration.cpp **** 	if(!configData.readLine(fileData))error=1;
+ 332              		.loc 1 279 0
+ 333 0280 0140A003 		moveq	r4, #1
+ 334              	.LVL23:
+ 335              		.loc 1 280 0
+ 336 0284 FEFFFFEB 		bl	strtok
+ 281:configuration.cpp **** 	result = strtok(NULL, delim);
+ 337              		.loc 1 281 0
+ 338 0288 14108DE2 		add	r1, sp, #20
+ 339 028c 0500A0E1 		mov	r0, r5
+ 340 0290 FEFFFFEB 		bl	strtok
+ 282:configuration.cpp **** 	configuration.cal_ax = strtol((const char *)result, NULL, 10);	
+ 341              		.loc 1 282 0
+ 342 0294 0A20A0E3 		mov	r2, #10
+ 343 0298 0510A0E1 		mov	r1, r5
+ 344 029c FEFFFFEB 		bl	strtol
+ 283:configuration.cpp **** 
+ 284:configuration.cpp **** 	//Get the 'Accel Y Calibration' parameter
+ 285:configuration.cpp **** 	if(!configData.readLine(fileData))error=1;
+ 345              		.loc 1 285 0
+ 346 02a0 0D10A0E1 		mov	r1, sp
+ 282:configuration.cpp **** 	configuration.cal_ax = strtol((const char *)result, NULL, 10);	
+ 347              		.loc 1 282 0
+ 348 02a4 100086E5 		str	r0, [r6, #16]
+ 349              		.loc 1 285 0
+ 350 02a8 2C008DE2 		add	r0, sp, #44
+ 351 02ac FEFFFFEB 		bl	_ZN7cMemory8readLineEPc
+ 286:configuration.cpp **** 	result = strtok(fileData, delim);
+ 352              		.loc 1 286 0
+ 353 02b0 14108DE2 		add	r1, sp, #20
+ 285:configuration.cpp **** 	if(!configData.readLine(fileData))error=1;
+ 354              		.loc 1 285 0
+ 355 02b4 000050E3 		cmp	r0, #0
+ 356              		.loc 1 286 0
+ 357 02b8 0D00A0E1 		mov	r0, sp
+ 285:configuration.cpp **** 	if(!configData.readLine(fileData))error=1;
+ 358              		.loc 1 285 0
+ 359 02bc 0140A003 		moveq	r4, #1
+ 360              	.LVL24:
+ 361              		.loc 1 286 0
+ 362 02c0 FEFFFFEB 		bl	strtok
+ 287:configuration.cpp **** 	result = strtok(NULL, delim);
+ 363              		.loc 1 287 0
+ 364 02c4 14108DE2 		add	r1, sp, #20
+ 365 02c8 0500A0E1 		mov	r0, r5
+ 366 02cc FEFFFFEB 		bl	strtok
+ 288:configuration.cpp **** 	configuration.cal_ay = strtol((const char *)result, NULL, 10);		
+ 367              		.loc 1 288 0
+ 368 02d0 0A20A0E3 		mov	r2, #10
+ 369 02d4 0510A0E1 		mov	r1, r5
+ 370 02d8 FEFFFFEB 		bl	strtol
+ 289:configuration.cpp **** 	
+ 290:configuration.cpp **** 	//Get the 'Accel Z Calibration' parameter
+ 291:configuration.cpp **** 	if(!configData.readLine(fileData))error=1;
+ 371              		.loc 1 291 0
+ 372 02dc 0D10A0E1 		mov	r1, sp
+ 288:configuration.cpp **** 	configuration.cal_ay = strtol((const char *)result, NULL, 10);		
+ 373              		.loc 1 288 0
+ 374 02e0 140086E5 		str	r0, [r6, #20]
+ 375              		.loc 1 291 0
+ 376 02e4 2C008DE2 		add	r0, sp, #44
+ 377 02e8 FEFFFFEB 		bl	_ZN7cMemory8readLineEPc
+ 292:configuration.cpp **** 	result = strtok(fileData, delim);
+ 378              		.loc 1 292 0
+ 379 02ec 14108DE2 		add	r1, sp, #20
+ 291:configuration.cpp **** 	if(!configData.readLine(fileData))error=1;
+ 380              		.loc 1 291 0
+ 381 02f0 000050E3 		cmp	r0, #0
+ 382              		.loc 1 292 0
+ 383 02f4 0D00A0E1 		mov	r0, sp
+ 291:configuration.cpp **** 	if(!configData.readLine(fileData))error=1;
+ 384              		.loc 1 291 0
+ 385 02f8 0140A003 		moveq	r4, #1
+ 386              	.LVL25:
+ 387              		.loc 1 292 0
+ 388 02fc FEFFFFEB 		bl	strtok
+ 293:configuration.cpp **** 	result = strtok(NULL, delim);
+ 389              		.loc 1 293 0
+ 390 0300 14108DE2 		add	r1, sp, #20
+ 391 0304 0500A0E1 		mov	r0, r5
+ 392 0308 FEFFFFEB 		bl	strtok
+ 294:configuration.cpp **** 	configuration.cal_az = strtof((const char *)result, NULL);	
+ 393              		.loc 1 294 0
+ 394 030c 0510A0E1 		mov	r1, r5
+ 395 0310 FEFFFFEB 		bl	strtof
+ 295:configuration.cpp **** 
+ 296:configuration.cpp **** 	//Get the 'Gyro X Calibration' parameter
+ 297:configuration.cpp **** 	if(!configData.readLine(fileData))error=1;
+ 396              		.loc 1 297 0
+ 397 0314 0D10A0E1 		mov	r1, sp
+ 294:configuration.cpp **** 	configuration.cal_az = strtof((const char *)result, NULL);	
+ 398              		.loc 1 294 0
+ 399 0318 180086E5 		str	r0, [r6, #24]	@ float
+ 400              		.loc 1 297 0
+ 401 031c 2C008DE2 		add	r0, sp, #44
+ 402 0320 FEFFFFEB 		bl	_ZN7cMemory8readLineEPc
+ 298:configuration.cpp **** 	result = strtok(fileData, delim);
+ 403              		.loc 1 298 0
+ 404 0324 14108DE2 		add	r1, sp, #20
+ 297:configuration.cpp **** 	if(!configData.readLine(fileData))error=1;
+ 405              		.loc 1 297 0
+ 406 0328 000050E3 		cmp	r0, #0
+ 407              		.loc 1 298 0
+ 408 032c 0D00A0E1 		mov	r0, sp
+ 297:configuration.cpp **** 	if(!configData.readLine(fileData))error=1;
+ 409              		.loc 1 297 0
+ 410 0330 0140A003 		moveq	r4, #1
+ 411              	.LVL26:
+ 412              		.loc 1 298 0
+ 413 0334 FEFFFFEB 		bl	strtok
+ 299:configuration.cpp **** 	result = strtok(NULL, delim);
+ 414              		.loc 1 299 0
+ 415 0338 14108DE2 		add	r1, sp, #20
+ 416 033c 0500A0E1 		mov	r0, r5
+ 417 0340 FEFFFFEB 		bl	strtok
+ 300:configuration.cpp **** 	configuration.cal_gx = strtol((const char *)result, NULL, 10);	
+ 418              		.loc 1 300 0
+ 419 0344 0A20A0E3 		mov	r2, #10
+ 420 0348 0510A0E1 		mov	r1, r5
+ 421 034c FEFFFFEB 		bl	strtol
+ 301:configuration.cpp **** 
+ 302:configuration.cpp **** 	//Get the 'Gyro Y Calibration' parameter
+ 303:configuration.cpp **** 	if(!configData.readLine(fileData))error=1;
+ 422              		.loc 1 303 0
+ 423 0350 0D10A0E1 		mov	r1, sp
+ 300:configuration.cpp **** 	configuration.cal_gx = strtol((const char *)result, NULL, 10);	
+ 424              		.loc 1 300 0
+ 425 0354 1C0086E5 		str	r0, [r6, #28]
+ 426              		.loc 1 303 0
+ 427 0358 2C008DE2 		add	r0, sp, #44
+ 428 035c FEFFFFEB 		bl	_ZN7cMemory8readLineEPc
+ 304:configuration.cpp **** 	result = strtok(fileData, delim);
+ 429              		.loc 1 304 0
+ 430 0360 14108DE2 		add	r1, sp, #20
+ 303:configuration.cpp **** 	if(!configData.readLine(fileData))error=1;
+ 431              		.loc 1 303 0
+ 432 0364 000050E3 		cmp	r0, #0
+ 433              		.loc 1 304 0
+ 434 0368 0D00A0E1 		mov	r0, sp
+ 303:configuration.cpp **** 	if(!configData.readLine(fileData))error=1;
+ 435              		.loc 1 303 0
+ 436 036c 0140A003 		moveq	r4, #1
+ 437              	.LVL27:
+ 438              		.loc 1 304 0
+ 439 0370 FEFFFFEB 		bl	strtok
+ 305:configuration.cpp **** 	result = strtok(NULL, delim);
+ 440              		.loc 1 305 0
+ 441 0374 14108DE2 		add	r1, sp, #20
+ 442 0378 0500A0E1 		mov	r0, r5
+ 443 037c FEFFFFEB 		bl	strtok
+ 306:configuration.cpp **** 	configuration.cal_gy = strtol((const char *)result, NULL, 10);		
+ 444              		.loc 1 306 0
+ 445 0380 0A20A0E3 		mov	r2, #10
+ 446 0384 0510A0E1 		mov	r1, r5
+ 447 0388 FEFFFFEB 		bl	strtol
+ 307:configuration.cpp **** 	
+ 308:configuration.cpp **** 	//Get the 'Gyro Z Calibration' parameter
+ 309:configuration.cpp **** 	if(!configData.readLine(fileData))error=1;
+ 448              		.loc 1 309 0
+ 449 038c 0D10A0E1 		mov	r1, sp
+ 306:configuration.cpp **** 	configuration.cal_gy = strtol((const char *)result, NULL, 10);		
+ 450              		.loc 1 306 0
+ 451 0390 200086E5 		str	r0, [r6, #32]
+ 452              		.loc 1 309 0
+ 453 0394 2C008DE2 		add	r0, sp, #44
+ 454 0398 FEFFFFEB 		bl	_ZN7cMemory8readLineEPc
+ 310:configuration.cpp **** 	result = strtok(fileData, delim);
+ 455              		.loc 1 310 0
+ 456 039c 14108DE2 		add	r1, sp, #20
+ 309:configuration.cpp **** 	if(!configData.readLine(fileData))error=1;
+ 457              		.loc 1 309 0
+ 458 03a0 000050E3 		cmp	r0, #0
+ 459              		.loc 1 310 0
+ 460 03a4 0D00A0E1 		mov	r0, sp
+ 309:configuration.cpp **** 	if(!configData.readLine(fileData))error=1;
+ 461              		.loc 1 309 0
+ 462 03a8 0140A003 		moveq	r4, #1
+ 463              	.LVL28:
+ 464              		.loc 1 310 0
+ 465 03ac FEFFFFEB 		bl	strtok
+ 311:configuration.cpp **** 	result = strtok(NULL, delim);
+ 466              		.loc 1 311 0
+ 467 03b0 14108DE2 		add	r1, sp, #20
+ 468 03b4 0500A0E1 		mov	r0, r5
+ 469 03b8 FEFFFFEB 		bl	strtok
+ 312:configuration.cpp **** 	configuration.cal_gz = strtol((const char *)result, NULL, 10);	
+ 470              		.loc 1 312 0
+ 471 03bc 0510A0E1 		mov	r1, r5
+ 472 03c0 0A20A0E3 		mov	r2, #10
+ 473 03c4 FEFFFFEB 		bl	strtol
+ 313:configuration.cpp **** 
+ 314:configuration.cpp **** 	if(error==1){
+ 474              		.loc 1 314 0
+ 475 03c8 010054E3 		cmp	r4, #1
+ 312:configuration.cpp **** 	configuration.cal_gz = strtol((const char *)result, NULL, 10);	
+ 476              		.loc 1 312 0
+ 477 03cc 240086E5 		str	r0, [r6, #36]
+ 478              		.loc 1 314 0
+ 479 03d0 0600001A 		bne	.L19
+ 315:configuration.cpp **** 		rprintf("Invalid configuration.txt file");
+ 480              		.loc 1 315 0
+ 481 03d4 38009FE5 		ldr	r0, .L32+12
+ 482 03d8 FEFFFFEB 		bl	rprintf
+ 316:configuration.cpp **** 		configData.close();
+ 483              		.loc 1 316 0
+ 484 03dc 2C008DE2 		add	r0, sp, #44
+ 485 03e0 FEFFFFEB 		bl	_ZN7cMemory5closeEv
+ 317:configuration.cpp **** 		memoryDelete("configuration.txt");
+ 486              		.loc 1 317 0
+ 487 03e4 20009FE5 		ldr	r0, .L32+4
+ 488 03e8 FEFFFFEB 		bl	_Z12memoryDeletePc
+ 318:configuration.cpp **** 		reset();
+ 489              		.loc 1 318 0
+ 490 03ec FEFFFFEB 		bl	_Z5resetv
+ 491              	.L19:
+ 319:configuration.cpp **** 	}
+ 320:configuration.cpp **** 	configData.close();
+ 492              		.loc 1 320 0
+ 493 03f0 2C008DE2 		add	r0, sp, #44
+ 494 03f4 FEFFFFEB 		bl	_ZN7cMemory5closeEv
+ 495              	.LBE7:
+ 321:configuration.cpp **** }
+ 496              		.loc 1 321 0
+ 497 03f8 18D08DE2 		add	sp, sp, #24
+ 498 03fc F040BDE8 		ldmfd	sp!, {r4, r5, r6, r7, lr}
+ 499 0400 10D08DE2 		add	sp, sp, #16
+ 500 0404 1EFF2FE1 		bx	lr
+ 501              	.L33:
+ 502              		.align	2
+ 503              	.L32:
+ 504 0408 31000000 		.word	.LC0
+ 505 040c 00000000 		.word	.LC1
+ 506 0410 00000000 		.word	.LANCHOR0
+ 507 0414 12000000 		.word	.LC2
+ 508              		.cfi_endproc
+ 509              	.LFE5:
+ 511              		.align	2
+ 512              		.global	_Z12enablePromptv
+ 514              	_Z12enablePromptv:
+ 515              	.LFB6:
+ 322:configuration.cpp **** 
+ 323:configuration.cpp **** char enablePrompt(void)
+ 324:configuration.cpp **** {
+ 516              		.loc 1 324 0
+ 517              		.cfi_startproc
+ 518              		@ Function supports interworking.
+ 519              		@ args = 0, pretend = 0, frame = 0
+ 520              		@ frame_needed = 0, uses_anonymous_args = 0
+ 521 0418 10402DE9 		stmfd	sp!, {r4, lr}
+ 522              	.LCFI3:
+ 523              		.cfi_def_cfa_offset 8
+ 524              		.cfi_offset 14, -4
+ 525              		.cfi_offset 4, -8
+ 526              	.LBB8:
+ 325:configuration.cpp **** 	char input;
+ 326:configuration.cpp **** 	rprintf("Press 1 to enable or 0 to disable.\n");
+ 527              		.loc 1 326 0
+ 528 041c 28009FE5 		ldr	r0, .L35
+ 529 0420 FEFFFFEB 		bl	rprintf
+ 327:configuration.cpp **** 	rprintf("Selection: ");
+ 530              		.loc 1 327 0
+ 531 0424 24009FE5 		ldr	r0, .L35+4
+ 532 0428 FEFFFFEB 		bl	rprintf
+ 328:configuration.cpp **** 	input = getc0();
+ 533              		.loc 1 328 0
+ 534 042c FEFFFFEB 		bl	getc0
+ 535 0430 FF4000E2 		and	r4, r0, #255
+ 536              	.LVL29:
+ 329:configuration.cpp **** 	rprintf("%c\n", input);
+ 537              		.loc 1 329 0
+ 538 0434 0410A0E1 		mov	r1, r4
+ 539 0438 14009FE5 		ldr	r0, .L35+8
+ 540 043c FEFFFFEB 		bl	rprintf
+ 541              	.LBE8:
+ 330:configuration.cpp **** 	return input;
+ 331:configuration.cpp **** }
+ 542              		.loc 1 331 0
+ 543 0440 0400A0E1 		mov	r0, r4
+ 544 0444 1040BDE8 		ldmfd	sp!, {r4, lr}
+ 545 0448 1EFF2FE1 		bx	lr
+ 546              	.L36:
+ 547              		.align	2
+ 548              	.L35:
+ 549 044c 34000000 		.word	.LC3
+ 550 0450 58000000 		.word	.LC4
+ 551 0454 64000000 		.word	.LC5
+ 552              		.cfi_endproc
+ 553              	.LFE6:
+ 555              		.global	__extendsfdf2
+ 556              		.align	2
+ 557              		.global	_Z14saveConfigData7cMemory
+ 559              	_Z14saveConfigData7cMemory:
+ 560              	.LFB7:
+ 332:configuration.cpp **** 
+ 333:configuration.cpp **** void saveConfigData(cMemory configData)
+ 334:configuration.cpp **** {
+ 561              		.loc 1 334 0
+ 562              		.cfi_startproc
+ 563              		@ Function supports interworking.
+ 564              		@ args = 36, pretend = 16, frame = 0
+ 565              		@ frame_needed = 0, uses_anonymous_args = 0
+ 566 0458 10D04DE2 		sub	sp, sp, #16
+ 567              	.LCFI4:
+ 568              		.cfi_def_cfa_offset 16
+ 569 045c 70402DE9 		stmfd	sp!, {r4, r5, r6, lr}
+ 570              	.LCFI5:
+ 571              		.cfi_def_cfa_offset 32
+ 572              		.cfi_offset 14, -20
+ 573              		.cfi_offset 6, -24
+ 574              		.cfi_offset 5, -28
+ 575              		.cfi_offset 4, -32
+ 335:configuration.cpp **** 	sprintf(log_string, "log_sensor=%d\nlog_gps=%d\nrange_accel=%d\nrange_compass=%d\nmsgs=%d,%d,%d,%d
+ 336:configuration.cpp **** 			configuration.log_sensor, configuration.log_gps, configuration.range_accel,
+ 337:configuration.cpp **** 			configuration.range_compass, configuration.gps_messages[0],configuration.gps_messages[1],configu
+ 338:configuration.cpp **** 			configuration.gps_messages[3],configuration.gps_messages[4],configuration.gps_messages[5],
+ 339:configuration.cpp **** 			configuration.output_euler, configuration.output_messages);	
+ 576              		.loc 1 339 0
+ 577 0460 D0409FE5 		ldr	r4, .L38
+ 334:configuration.cpp **** {
+ 578              		.loc 1 334 0
+ 579 0464 28D04DE2 		sub	sp, sp, #40
+ 580              	.LCFI6:
+ 581              		.cfi_def_cfa_offset 72
+ 334:configuration.cpp **** {
+ 582              		.loc 1 334 0
+ 583 0468 38508DE2 		add	r5, sp, #56
+ 584 046c 0F0085E8 		stmia	r5, {r0, r1, r2, r3}
+ 585              		.loc 1 339 0
+ 586 0470 0210D4E5 		ldrb	r1, [r4, #2]	@ zero_extendqisi2
+ 587 0474 00108DE5 		str	r1, [sp, #0]
+ 588 0478 0310D4E5 		ldrb	r1, [r4, #3]	@ zero_extendqisi2
+ 589 047c 04108DE5 		str	r1, [sp, #4]
+ 590 0480 0410D4E5 		ldrb	r1, [r4, #4]	@ zero_extendqisi2
+ 591 0484 08108DE5 		str	r1, [sp, #8]
+ 592 0488 0510D4E5 		ldrb	r1, [r4, #5]	@ zero_extendqisi2
+ 593 048c 0C108DE5 		str	r1, [sp, #12]
+ 594 0490 0610D4E5 		ldrb	r1, [r4, #6]	@ zero_extendqisi2
+ 595 0494 10108DE5 		str	r1, [sp, #16]
+ 596 0498 0710D4E5 		ldrb	r1, [r4, #7]	@ zero_extendqisi2
+ 597 049c 14108DE5 		str	r1, [sp, #20]
+ 598 04a0 0810D4E5 		ldrb	r1, [r4, #8]	@ zero_extendqisi2
+ 599 04a4 18108DE5 		str	r1, [sp, #24]
+ 600 04a8 0910D4E5 		ldrb	r1, [r4, #9]	@ zero_extendqisi2
+ 601 04ac 1C108DE5 		str	r1, [sp, #28]
+ 602 04b0 0B10D4E5 		ldrb	r1, [r4, #11]	@ zero_extendqisi2
+ 603 04b4 20108DE5 		str	r1, [sp, #32]
+ 604 04b8 0C10D4E5 		ldrb	r1, [r4, #12]	@ zero_extendqisi2
+ 605 04bc 286084E2 		add	r6, r4, #40
+ 606 04c0 0020D4E5 		ldrb	r2, [r4, #0]	@ zero_extendqisi2
+ 607 04c4 0130D4E5 		ldrb	r3, [r4, #1]	@ zero_extendqisi2
+ 608 04c8 24108DE5 		str	r1, [sp, #36]
+ 609 04cc 0600A0E1 		mov	r0, r6
+ 610 04d0 64109FE5 		ldr	r1, .L38+4
+ 611 04d4 FEFFFFEB 		bl	sprintf
+ 340:configuration.cpp **** 	//rprintf("Saving...\n%s", log_string);
+ 341:configuration.cpp **** 	configData.save(log_string);
+ 612              		.loc 1 341 0
+ 613 04d8 0610A0E1 		mov	r1, r6
+ 614 04dc 0500A0E1 		mov	r0, r5
+ 615 04e0 FEFFFFEB 		bl	_ZN7cMemory4saveEPc
+ 342:configuration.cpp **** 	
+ 343:configuration.cpp **** 	sprintf(log_string, "cal_ax=%d\ncal_ay=%d\ncal_az=%5.2f\ncal_gx=%d\ncal_gy=%d\ncal_gz=%d\n",
+ 344:configuration.cpp **** 			configuration.cal_ax, configuration.cal_ay, configuration.cal_az,
+ 345:configuration.cpp **** 			configuration.cal_gx, configuration.cal_gy, configuration.cal_gz);
+ 616              		.loc 1 345 0
+ 617 04e4 180094E5 		ldr	r0, [r4, #24]	@ float
+ 618 04e8 FEFFFFEB 		bl	__extendsfdf2
+ 619 04ec 1C3094E5 		ldr	r3, [r4, #28]
+ 620 04f0 08308DE5 		str	r3, [sp, #8]
+ 621 04f4 203094E5 		ldr	r3, [r4, #32]
+ 622 04f8 0C308DE5 		str	r3, [sp, #12]
+ 623 04fc 243094E5 		ldr	r3, [r4, #36]
+ 624 0500 03008DE8 		stmia	sp, {r0-r1}
+ 625 0504 10308DE5 		str	r3, [sp, #16]
+ 626 0508 102084E2 		add	r2, r4, #16
+ 627 050c 0600A0E1 		mov	r0, r6
+ 628 0510 28109FE5 		ldr	r1, .L38+8
+ 629 0514 0C0092E8 		ldmia	r2, {r2, r3}
+ 630 0518 FEFFFFEB 		bl	sprintf
+ 346:configuration.cpp **** 	configData.save(log_string);
+ 631              		.loc 1 346 0
+ 632 051c 0500A0E1 		mov	r0, r5
+ 633 0520 0610A0E1 		mov	r1, r6
+ 634 0524 FEFFFFEB 		bl	_ZN7cMemory4saveEPc
+ 347:configuration.cpp **** }
+ 635              		.loc 1 347 0
+ 636 0528 28D08DE2 		add	sp, sp, #40
+ 637 052c 7040BDE8 		ldmfd	sp!, {r4, r5, r6, lr}
+ 638 0530 10D08DE2 		add	sp, sp, #16
+ 639 0534 1EFF2FE1 		bx	lr
+ 640              	.L39:
+ 641              		.align	2
+ 642              	.L38:
+ 643 0538 00000000 		.word	.LANCHOR0
+ 644 053c 68000000 		.word	.LC6
+ 645 0540 CC000000 		.word	.LC7
+ 646              		.cfi_endproc
+ 647              	.LFE7:
+ 649              		.align	2
+ 650              		.global	_Z16createConfigFile7cMemory
+ 652              	_Z16createConfigFile7cMemory:
+ 653              	.LFB4:
+ 216:configuration.cpp **** void createConfigFile(cMemory configData){
+ 654              		.loc 1 216 0
+ 655              		.cfi_startproc
+ 656              		@ Function supports interworking.
+ 657              		@ args = 36, pretend = 16, frame = 0
+ 658              		@ frame_needed = 0, uses_anonymous_args = 0
+ 659 0544 10D04DE2 		sub	sp, sp, #16
+ 660              	.LCFI7:
+ 661              		.cfi_def_cfa_offset 16
+ 662 0548 10402DE9 		stmfd	sp!, {r4, lr}
+ 663              	.LCFI8:
+ 664              		.cfi_def_cfa_offset 24
+ 665              		.cfi_offset 14, -20
+ 666              		.cfi_offset 4, -24
+ 667 054c 14D04DE2 		sub	sp, sp, #20
+ 668              	.LCFI9:
+ 669              		.cfi_def_cfa_offset 44
+ 216:configuration.cpp **** void createConfigFile(cMemory configData){
+ 670              		.loc 1 216 0
+ 671 0550 1C408DE2 		add	r4, sp, #28
+ 672 0554 0F0084E8 		stmia	r4, {r0, r1, r2, r3}
+ 217:configuration.cpp **** 	configData.create("configuration.txt");
+ 673              		.loc 1 217 0
+ 674 0558 44109FE5 		ldr	r1, .L41
+ 675 055c 0400A0E1 		mov	r0, r4
+ 676 0560 FEFFFFEB 		bl	_ZN7cMemory6createEPKc
+ 219:configuration.cpp **** 	configData.open();
+ 677              		.loc 1 219 0
+ 678 0564 0400A0E1 		mov	r0, r4
+ 679 0568 FEFFFFEB 		bl	_ZN7cMemory4openEv
+ 220:configuration.cpp **** 	saveConfigData(configData);
+ 680              		.loc 1 220 0
+ 681 056c 2CE08DE2 		add	lr, sp, #44
+ 682 0570 0F00BEE8 		ldmia	lr!, {r0, r1, r2, r3}
+ 683 0574 0DC0A0E1 		mov	ip, sp
+ 684 0578 0F00ACE8 		stmia	ip!, {r0, r1, r2, r3}
+ 685 057c 00309EE5 		ldr	r3, [lr, #0]
+ 686 0580 00308CE5 		str	r3, [ip, #0]
+ 687 0584 0F0094E8 		ldmia	r4, {r0, r1, r2, r3}
+ 688 0588 FEFFFFEB 		bl	_Z14saveConfigData7cMemory
+ 221:configuration.cpp **** 	configData.close();
+ 689              		.loc 1 221 0
+ 690 058c 0400A0E1 		mov	r0, r4
+ 691 0590 FEFFFFEB 		bl	_ZN7cMemory5closeEv
+ 222:configuration.cpp **** }
+ 692              		.loc 1 222 0
+ 693 0594 14D08DE2 		add	sp, sp, #20
+ 694 0598 1040BDE8 		ldmfd	sp!, {r4, lr}
+ 695 059c 10D08DE2 		add	sp, sp, #16
+ 696 05a0 1EFF2FE1 		bx	lr
+ 697              	.L42:
+ 698              		.align	2
+ 699              	.L41:
+ 700 05a4 00000000 		.word	.LC1
+ 701              		.cfi_endproc
+ 702              	.LFE4:
+ 704              		.align	2
+ 705              		.global	_Z10configMenu7cMemory
+ 707              	_Z10configMenu7cMemory:
+ 708              	.LFB3:
+  45:configuration.cpp **** void configMenu(cMemory configData){
+ 709              		.loc 1 45 0
+ 710              		.cfi_startproc
+ 711              		@ Function supports interworking.
+ 712              		@ args = 36, pretend = 16, frame = 0
+ 713              		@ frame_needed = 0, uses_anonymous_args = 0
+ 714              	.LVL30:
+ 715 05a8 10D04DE2 		sub	sp, sp, #16
+ 716              	.LCFI10:
+ 717              		.cfi_def_cfa_offset 16
+ 718 05ac F0412DE9 		stmfd	sp!, {r4, r5, r6, r7, r8, lr}
+ 719              	.LCFI11:
+ 720              		.cfi_def_cfa_offset 40
+ 721              		.cfi_offset 14, -20
+ 722              		.cfi_offset 8, -24
+ 723              		.cfi_offset 7, -28
+ 724              		.cfi_offset 6, -32
+ 725              		.cfi_offset 5, -36
+ 726              		.cfi_offset 4, -40
+ 727              	.LBB9:
+ 728              	.LBB10:
+  54:configuration.cpp **** 			if(configuration.log_sensor)rprintf("(Enabled)\n");
+ 729              		.loc 1 54 0
+ 730 05b0 E8449FE5 		ldr	r4, .L114
+ 731              	.LBE10:
+ 732              	.LBE9:
+  45:configuration.cpp **** void configMenu(cMemory configData){
+ 733              		.loc 1 45 0
+ 734 05b4 14D04DE2 		sub	sp, sp, #20
+ 735              	.LCFI12:
+ 736              		.cfi_def_cfa_offset 60
+  45:configuration.cpp **** void configMenu(cMemory configData){
+ 737              		.loc 1 45 0
+ 738 05b8 28C08DE2 		add	ip, sp, #40
+ 739 05bc 0F008CE9 		stmib	ip, {r0, r1, r2, r3}
+ 740              	.LBB17:
+ 741              	.LBB15:
+  51:configuration.cpp **** 		rprintf("- Version %d.%d -\n", major_version, minor_version);
+ 742              		.loc 1 51 0
+ 743 05c0 DC649FE5 		ldr	r6, .L114+4
+ 744 05c4 0450A0E1 		mov	r5, r4
+ 745              	.LBE15:
+  49:configuration.cpp **** 	while(!exit){
+ 746              		.loc 1 49 0
+ 747 05c8 120100EA 		b	.L101
+ 748              	.LVL31:
+ 749              	.L113:
+ 750              	.LBB16:
+  55:configuration.cpp **** 			else rprintf("(Disabled\n");
+ 751              		.loc 1 55 0
+ 752 05cc D4049FE5 		ldr	r0, .L114+8
+ 753              	.L103:
+ 754 05d0 FEFFFFEB 		bl	rprintf
+  56:configuration.cpp **** 		rprintf("2.) Log GPS Data ");
+ 755              		.loc 1 56 0
+ 756 05d4 D0049FE5 		ldr	r0, .L114+12
+ 757 05d8 FEFFFFEB 		bl	rprintf
+  57:configuration.cpp **** 			if(configuration.log_gps)rprintf("(Enabled)\n");
+ 758              		.loc 1 57 0
+ 759 05dc 0130D5E5 		ldrb	r3, [r5, #1]	@ zero_extendqisi2
+ 760 05e0 000053E3 		cmp	r3, #0
+ 761 05e4 C4049F15 		ldrne	r0, .L114+16
+  58:configuration.cpp **** 			else rprintf("(Disabled)\n");		
+ 762              		.loc 1 58 0
+ 763 05e8 C4049F05 		ldreq	r0, .L114+20
+ 764 05ec FEFFFFEB 		bl	rprintf
+  59:configuration.cpp **** 		rprintf("3.) Accelerometer Range (+/-");
+ 765              		.loc 1 59 0
+ 766 05f0 C0049FE5 		ldr	r0, .L114+24
+ 767 05f4 FEFFFFEB 		bl	rprintf
+  60:configuration.cpp **** 			if(configuration.range_accel==0)rprintf("2g)\n");
+ 768              		.loc 1 60 0
+ 769 05f8 0230D4E5 		ldrb	r3, [r4, #2]	@ zero_extendqisi2
+ 770 05fc 000053E3 		cmp	r3, #0
+ 771 0600 B4049F05 		ldreq	r0, .L114+28
+ 772 0604 0500000A 		beq	.L105
+  61:configuration.cpp **** 			else if(configuration.range_accel==1)rprintf("4g)\n");
+ 773              		.loc 1 61 0
+ 774 0608 010053E3 		cmp	r3, #1
+ 775 060c AC049F05 		ldreq	r0, .L114+32
+ 776 0610 0200000A 		beq	.L105
+  62:configuration.cpp **** 			else if(configuration.range_accel==2)rprintf("8g)\n");
+ 777              		.loc 1 62 0
+ 778 0614 020053E3 		cmp	r3, #2
+ 779 0618 A4049F05 		ldreq	r0, .L114+36
+  63:configuration.cpp **** 			else rprintf("16g)\n");
+ 780              		.loc 1 63 0
+ 781 061c A4049F15 		ldrne	r0, .L114+40
+ 782              	.L105:
+ 783 0620 FEFFFFEB 		bl	rprintf
+  64:configuration.cpp **** 		rprintf("4.) Compass Range (+/-");
+ 784              		.loc 1 64 0
+ 785 0624 A0049FE5 		ldr	r0, .L114+44
+ 786 0628 FEFFFFEB 		bl	rprintf
+  65:configuration.cpp **** 			switch(configuration.range_compass){
+ 787              		.loc 1 65 0
+ 788 062c 0330D5E5 		ldrb	r3, [r5, #3]	@ zero_extendqisi2
+ 789 0630 070053E3 		cmp	r3, #7
+ 790 0634 03F19F97 		ldrls	pc, [pc, r3, asl #2]
+ 791 0638 170000EA 		b	.L52
+ 792              	.L61:
+ 793 063c 5C060000 		.word	.L53
+ 794 0640 64060000 		.word	.L54
+ 795 0644 6C060000 		.word	.L55
+ 796 0648 74060000 		.word	.L56
+ 797 064c 7C060000 		.word	.L57
+ 798 0650 84060000 		.word	.L58
+ 799 0654 8C060000 		.word	.L59
+ 800 0658 94060000 		.word	.L60
+ 801              	.L53:
+  66:configuration.cpp **** 				case 0:rprintf("0.7");
+ 802              		.loc 1 66 0
+ 803 065c 6C049FE5 		ldr	r0, .L114+48
+ 804 0660 0C0000EA 		b	.L106
+ 805              	.L54:
+  68:configuration.cpp **** 				case 1:rprintf("1.0");
+ 806              		.loc 1 68 0
+ 807 0664 68049FE5 		ldr	r0, .L114+52
+ 808 0668 0A0000EA 		b	.L106
+ 809              	.L55:
+  70:configuration.cpp **** 				case 2:rprintf("1.5");
+ 810              		.loc 1 70 0
+ 811 066c 64049FE5 		ldr	r0, .L114+56
+ 812 0670 080000EA 		b	.L106
+ 813              	.L56:
+  72:configuration.cpp **** 				case 3:rprintf("2.0");
+ 814              		.loc 1 72 0
+ 815 0674 60049FE5 		ldr	r0, .L114+60
+ 816 0678 060000EA 		b	.L106
+ 817              	.L57:
+  74:configuration.cpp **** 				case 4:rprintf("3.2");
+ 818              		.loc 1 74 0
+ 819 067c 5C049FE5 		ldr	r0, .L114+64
+ 820 0680 040000EA 		b	.L106
+ 821              	.L58:
+  76:configuration.cpp **** 				case 5:rprintf("3.8");
+ 822              		.loc 1 76 0
+ 823 0684 58049FE5 		ldr	r0, .L114+68
+ 824 0688 020000EA 		b	.L106
+ 825              	.L59:
+  78:configuration.cpp **** 				case 6:rprintf("4.5");
+ 826              		.loc 1 78 0
+ 827 068c 54049FE5 		ldr	r0, .L114+72
+ 828 0690 000000EA 		b	.L106
+ 829              	.L60:
+  80:configuration.cpp **** 				case 7:rprintf("6.5");
+ 830              		.loc 1 80 0
+ 831 0694 50049FE5 		ldr	r0, .L114+76
+ 832              	.L106:
+ 833 0698 FEFFFFEB 		bl	rprintf
+ 834              	.L52:
+  85:configuration.cpp **** 			rprintf("Ga)\n");
+ 835              		.loc 1 85 0
+ 836 069c 4C049FE5 		ldr	r0, .L114+80
+ 837 06a0 FEFFFFEB 		bl	rprintf
+  86:configuration.cpp **** 		rprintf("5.) GPS Messages (");
+ 838              		.loc 1 86 0
+ 839 06a4 48049FE5 		ldr	r0, .L114+84
+ 840 06a8 FEFFFFEB 		bl	rprintf
+  87:configuration.cpp **** 			if(configuration.gps_messages[0])rprintf("GGA, ");
+ 841              		.loc 1 87 0
+ 842 06ac 0430D4E5 		ldrb	r3, [r4, #4]	@ zero_extendqisi2
+ 843 06b0 000053E3 		cmp	r3, #0
+  87:configuration.cpp **** 			if(configuration.gps_messages[0])rprintf("GGA, ");
+ 844              		.loc 1 87 0 is_stmt 0 discriminator 1
+ 845 06b4 3C049F15 		ldrne	r0, .L114+88
+ 846 06b8 FEFFFF1B 		blne	rprintf
+ 847              	.L62:
+  88:configuration.cpp **** 			if(configuration.gps_messages[1])rprintf("GLL, ");
+ 848              		.loc 1 88 0 is_stmt 1
+ 849 06bc 0530D5E5 		ldrb	r3, [r5, #5]	@ zero_extendqisi2
+ 850 06c0 000053E3 		cmp	r3, #0
+  88:configuration.cpp **** 			if(configuration.gps_messages[1])rprintf("GLL, ");
+ 851              		.loc 1 88 0 is_stmt 0 discriminator 1
+ 852 06c4 30049F15 		ldrne	r0, .L114+92
+ 853 06c8 FEFFFF1B 		blne	rprintf
+ 854              	.L63:
+  89:configuration.cpp **** 			if(configuration.gps_messages[2])rprintf("GSA, ");
+ 855              		.loc 1 89 0 is_stmt 1
+ 856 06cc 0630D5E5 		ldrb	r3, [r5, #6]	@ zero_extendqisi2
+ 857 06d0 000053E3 		cmp	r3, #0
+  89:configuration.cpp **** 			if(configuration.gps_messages[2])rprintf("GSA, ");
+ 858              		.loc 1 89 0 is_stmt 0 discriminator 1
+ 859 06d4 24049F15 		ldrne	r0, .L114+96
+ 860 06d8 FEFFFF1B 		blne	rprintf
+ 861              	.L64:
+  90:configuration.cpp **** 			if(configuration.gps_messages[3])rprintf("GSV, ");
+ 862              		.loc 1 90 0 is_stmt 1
+ 863 06dc 0730D4E5 		ldrb	r3, [r4, #7]	@ zero_extendqisi2
+ 864 06e0 000053E3 		cmp	r3, #0
+  90:configuration.cpp **** 			if(configuration.gps_messages[3])rprintf("GSV, ");
+ 865              		.loc 1 90 0 is_stmt 0 discriminator 1
+ 866 06e4 18049F15 		ldrne	r0, .L114+100
+ 867 06e8 FEFFFF1B 		blne	rprintf
+ 868              	.L65:
+  91:configuration.cpp **** 			if(configuration.gps_messages[4])rprintf("RMC, ");
+ 869              		.loc 1 91 0 is_stmt 1
+ 870 06ec 0830D5E5 		ldrb	r3, [r5, #8]	@ zero_extendqisi2
+ 871 06f0 000053E3 		cmp	r3, #0
+  91:configuration.cpp **** 			if(configuration.gps_messages[4])rprintf("RMC, ");
+ 872              		.loc 1 91 0 is_stmt 0 discriminator 1
+ 873 06f4 0C049F15 		ldrne	r0, .L114+104
+ 874 06f8 FEFFFF1B 		blne	rprintf
+ 875              	.L66:
+  92:configuration.cpp **** 			if(configuration.gps_messages[5])rprintf("VTG, ");
+ 876              		.loc 1 92 0 is_stmt 1
+ 877 06fc 0930D5E5 		ldrb	r3, [r5, #9]	@ zero_extendqisi2
+ 878 0700 000053E3 		cmp	r3, #0
+  92:configuration.cpp **** 			if(configuration.gps_messages[5])rprintf("VTG, ");
+ 879              		.loc 1 92 0 is_stmt 0 discriminator 1
+ 880 0704 00049F15 		ldrne	r0, .L114+108
+ 881 0708 FEFFFF1B 		blne	rprintf
+ 882              	.L67:
+  93:configuration.cpp **** 			rprintf(")\n");
+ 883              		.loc 1 93 0 is_stmt 1
+ 884 070c FC039FE5 		ldr	r0, .L114+112
+ 885 0710 FEFFFFEB 		bl	rprintf
+  94:configuration.cpp **** 		rprintf("6.) Calibrate IMU\n");
+ 886              		.loc 1 94 0
+ 887 0714 F8039FE5 		ldr	r0, .L114+116
+ 888 0718 FEFFFFEB 		bl	rprintf
+  95:configuration.cpp **** 		rprintf("7.) Sensor Output (");
+ 889              		.loc 1 95 0
+ 890 071c F4039FE5 		ldr	r0, .L114+120
+ 891 0720 FEFFFFEB 		bl	rprintf
+  96:configuration.cpp **** 			if(configuration.output_euler)rprintf("Euler)\n");
+ 892              		.loc 1 96 0
+ 893 0724 0B30D4E5 		ldrb	r3, [r4, #11]	@ zero_extendqisi2
+ 894 0728 000053E3 		cmp	r3, #0
+ 895 072c E8039F15 		ldrne	r0, .L114+124
+  97:configuration.cpp **** 			else rprintf("Raw)\n");
+ 896              		.loc 1 97 0
+ 897 0730 E8039F05 		ldreq	r0, .L114+128
+ 898 0734 FEFFFFEB 		bl	rprintf
+  98:configuration.cpp **** 		rprintf("8.) Serial Output Messages (");
+ 899              		.loc 1 98 0
+ 900 0738 E4039FE5 		ldr	r0, .L114+132
+ 901 073c FEFFFFEB 		bl	rprintf
+  99:configuration.cpp **** 			if(configuration.output_messages==0)rprintf("None)\n");
+ 902              		.loc 1 99 0
+ 903 0740 0C30D5E5 		ldrb	r3, [r5, #12]	@ zero_extendqisi2
+ 904 0744 000053E3 		cmp	r3, #0
+ 905 0748 D8039F05 		ldreq	r0, .L114+136
+ 906 074c 0500000A 		beq	.L108
+ 100:configuration.cpp **** 			else if(configuration.output_messages==1)rprintf("Sensor Data)\n");
+ 907              		.loc 1 100 0
+ 908 0750 010053E3 		cmp	r3, #1
+ 909 0754 D0039F05 		ldreq	r0, .L114+140
+ 910 0758 0200000A 		beq	.L108
+ 101:configuration.cpp **** 			else if(configuration.output_messages==2)rprintf("GPS Data)\n");
+ 911              		.loc 1 101 0
+ 912 075c 020053E3 		cmp	r3, #2
+ 913 0760 C8039F05 		ldreq	r0, .L114+144
+ 102:configuration.cpp **** 			else rprintf("Sensor and GPS data)\n");
+ 914              		.loc 1 102 0
+ 915 0764 C8039F15 		ldrne	r0, .L114+148
+ 916              	.L108:
+ 917 0768 FEFFFFEB 		bl	rprintf
+ 103:configuration.cpp **** 		rprintf("9.) Exit\n");
+ 918              		.loc 1 103 0
+ 919 076c C4039FE5 		ldr	r0, .L114+152
+ 920 0770 FEFFFFEB 		bl	rprintf
+ 105:configuration.cpp **** 		rprintf("\nSelection: ");
+ 921              		.loc 1 105 0
+ 922 0774 C0039FE5 		ldr	r0, .L114+156
+ 923 0778 FEFFFFEB 		bl	rprintf
+ 106:configuration.cpp **** 		selection=getc0();
+ 924              		.loc 1 106 0
+ 925 077c FEFFFFEB 		bl	getc0
+ 926 0780 FF7000E2 		and	r7, r0, #255
+ 927              	.LVL32:
+ 107:configuration.cpp **** 		rprintf("%c\n\n", selection);
+ 928              		.loc 1 107 0
+ 929 0784 0710A0E1 		mov	r1, r7
+ 930 0788 B0039FE5 		ldr	r0, .L114+160
+ 931              	.LBB11:
+ 109:configuration.cpp **** 		switch (selection)
+ 932              		.loc 1 109 0
+ 933 078c 317047E2 		sub	r7, r7, #49
+ 934              	.LVL33:
+ 935              	.LBE11:
+ 107:configuration.cpp **** 		rprintf("%c\n\n", selection);
+ 936              		.loc 1 107 0
+ 937 0790 FEFFFFEB 		bl	rprintf
+ 938              	.LVL34:
+ 939              	.LBB14:
+ 109:configuration.cpp **** 		switch (selection)
+ 940              		.loc 1 109 0
+ 941 0794 070057E3 		cmp	r7, #7
+ 942 0798 07F19F97 		ldrls	pc, [pc, r7, asl #2]
+ 943 079c AD0000EA 		b	.L74
+ 944              	.L83:
+ 945 07a0 C0070000 		.word	.L75
+ 946 07a4 E0070000 		.word	.L76
+ 947 07a8 00080000 		.word	.L77
+ 948 07ac 40080000 		.word	.L78
+ 949 07b0 88080000 		.word	.L79
+ 950 07b4 14090000 		.word	.L80
+ 951 07b8 AC090000 		.word	.L81
+ 952 07bc D4090000 		.word	.L82
+ 953              	.L75:
+ 954              	.LBB12:
+ 112:configuration.cpp **** 				rprintf("\nLog Sensor Data\n");
+ 955              		.loc 1 112 0
+ 956 07c0 7C039FE5 		ldr	r0, .L114+164
+ 957 07c4 FEFFFFEB 		bl	rprintf
+ 113:configuration.cpp **** 				selection = enablePrompt();
+ 958              		.loc 1 113 0
+ 959 07c8 FEFFFFEB 		bl	_Z12enablePromptv
+ 960              	.LVL35:
+ 114:configuration.cpp **** 				if(selection > '0')configuration.log_sensor=1;
+ 961              		.loc 1 114 0
+ 962 07cc 300050E3 		cmp	r0, #48
+ 963 07d0 0130A083 		movhi	r3, #1
+ 115:configuration.cpp **** 				else configuration.log_sensor=0;
+ 964              		.loc 1 115 0
+ 965 07d4 0030A093 		movls	r3, #0
+ 966 07d8 0030C4E5 		strb	r3, [r4, #0]
+ 967 07dc 8D0000EA 		b	.L101
+ 968              	.LVL36:
+ 969              	.L76:
+ 119:configuration.cpp **** 				rprintf("\nLog GPS Data\n");
+ 970              		.loc 1 119 0
+ 971 07e0 60039FE5 		ldr	r0, .L114+168
+ 972 07e4 FEFFFFEB 		bl	rprintf
+ 120:configuration.cpp **** 				selection=enablePrompt();
+ 973              		.loc 1 120 0
+ 974 07e8 FEFFFFEB 		bl	_Z12enablePromptv
+ 975              	.LVL37:
+ 121:configuration.cpp **** 				if(selection > '0')configuration.log_gps=1;
+ 976              		.loc 1 121 0
+ 977 07ec 300050E3 		cmp	r0, #48
+ 978 07f0 0130A083 		movhi	r3, #1
+ 122:configuration.cpp **** 				else configuration.log_gps=0;				
+ 979              		.loc 1 122 0
+ 980 07f4 0030A093 		movls	r3, #0
+ 981 07f8 0130C4E5 		strb	r3, [r4, #1]
+ 982 07fc 850000EA 		b	.L101
+ 983              	.LVL38:
+ 984              	.L77:
+ 126:configuration.cpp **** 				rprintf("\nAccelerometer Range\n");
+ 985              		.loc 1 126 0
+ 986 0800 44039FE5 		ldr	r0, .L114+172
+ 987 0804 FEFFFFEB 		bl	rprintf
+ 127:configuration.cpp **** 				rprintf("Select Range:\n1.)2g\n2.)4g\n3.)8g\n4.)16g\n");
+ 988              		.loc 1 127 0
+ 989 0808 40039FE5 		ldr	r0, .L114+176
+ 990 080c FEFFFFEB 		bl	rprintf
+ 128:configuration.cpp **** 				rprintf("Selection: ");
+ 991              		.loc 1 128 0
+ 992 0810 3C039FE5 		ldr	r0, .L114+180
+ 993 0814 FEFFFFEB 		bl	rprintf
+ 129:configuration.cpp **** 				selection = getc0();
+ 994              		.loc 1 129 0
+ 995 0818 FEFFFFEB 		bl	getc0
+ 996 081c FF7000E2 		and	r7, r0, #255
+ 997              	.LVL39:
+ 130:configuration.cpp **** 				rprintf("%c\n", selection);
+ 998              		.loc 1 130 0
+ 999 0820 0710A0E1 		mov	r1, r7
+ 131:configuration.cpp **** 				if(selection > '0' && selection < '5'){
+ 1000              		.loc 1 131 0
+ 1001 0824 317047E2 		sub	r7, r7, #49
+ 1002              	.LVL40:
+ 1003 0828 FF7007E2 		and	r7, r7, #255
+ 130:configuration.cpp **** 				rprintf("%c\n", selection);
+ 1004              		.loc 1 130 0
+ 1005 082c 24039FE5 		ldr	r0, .L114+184
+ 1006 0830 FEFFFFEB 		bl	rprintf
+ 1007              	.LVL41:
+ 131:configuration.cpp **** 				if(selection > '0' && selection < '5'){
+ 1008              		.loc 1 131 0
+ 1009 0834 030057E3 		cmp	r7, #3
+ 133:configuration.cpp **** 					configuration.range_accel=selection-1;	//Get the bit setting for the g-scale
+ 1010              		.loc 1 133 0
+ 1011 0838 0270C495 		strlsb	r7, [r4, #2]
+ 1012 083c 750000EA 		b	.L101
+ 1013              	.LVL42:
+ 1014              	.L78:
+ 138:configuration.cpp **** 				rprintf("\nCompass Range\n");
+ 1015              		.loc 1 138 0
+ 1016 0840 14039FE5 		ldr	r0, .L114+188
+ 1017 0844 FEFFFFEB 		bl	rprintf
+ 139:configuration.cpp **** 				rprintf("Select Range:\n1.) +/-0.7Ga\n2.) +/-1.0Ga\n3.) +/-1.5Ga\n 4.) +/-2.0Ga\n");
+ 1018              		.loc 1 139 0
+ 1019 0848 10039FE5 		ldr	r0, .L114+192
+ 1020 084c FEFFFFEB 		bl	rprintf
+ 140:configuration.cpp **** 				rprintf("5.) +/-3.2Ga\n6.) +/-3.8Ga\n7.) +/-4.5Ga\n8.) +/-6.5Ga\n");
+ 1021              		.loc 1 140 0
+ 1022 0850 0C039FE5 		ldr	r0, .L114+196
+ 1023 0854 FEFFFFEB 		bl	rprintf
+ 141:configuration.cpp **** 				rprintf("Selection: ");
+ 1024              		.loc 1 141 0
+ 1025 0858 F4029FE5 		ldr	r0, .L114+180
+ 1026 085c FEFFFFEB 		bl	rprintf
+ 142:configuration.cpp **** 				selection = getc0();
+ 1027              		.loc 1 142 0
+ 1028 0860 FEFFFFEB 		bl	getc0
+ 1029 0864 FF7000E2 		and	r7, r0, #255
+ 1030              	.LVL43:
+ 143:configuration.cpp **** 				rprintf("%c\n", selection);
+ 1031              		.loc 1 143 0
+ 1032 0868 0710A0E1 		mov	r1, r7
+ 144:configuration.cpp **** 				if(selection > '0' && selection < '9'){
+ 1033              		.loc 1 144 0
+ 1034 086c 317047E2 		sub	r7, r7, #49
+ 1035              	.LVL44:
+ 1036 0870 FF7007E2 		and	r7, r7, #255
+ 143:configuration.cpp **** 				rprintf("%c\n", selection);
+ 1037              		.loc 1 143 0
+ 1038 0874 DC029FE5 		ldr	r0, .L114+184
+ 1039 0878 FEFFFFEB 		bl	rprintf
+ 1040              	.LVL45:
+ 144:configuration.cpp **** 				if(selection > '0' && selection < '9'){
+ 1041              		.loc 1 144 0
+ 1042 087c 070057E3 		cmp	r7, #7
+ 146:configuration.cpp **** 					configuration.range_compass = selection -1;
+ 1043              		.loc 1 146 0
+ 1044 0880 0370C495 		strlsb	r7, [r4, #3]
+ 1045 0884 630000EA 		b	.L101
+ 1046              	.LVL46:
+ 1047              	.L79:
+ 151:configuration.cpp **** 				rprintf("\nConfigure GPS Messages\n");
+ 1048              		.loc 1 151 0
+ 1049 0888 D8029FE5 		ldr	r0, .L114+200
+ 1050 088c FEFFFFEB 		bl	rprintf
+ 1051              	.LVL47:
+ 1052 0890 D4829FE5 		ldr	r8, .L114+204
+ 152:configuration.cpp **** 				for(int message=0; message<6; message++)
+ 1053              		.loc 1 152 0
+ 1054 0894 0070A0E3 		mov	r7, #0
+ 1055              	.LVL48:
+ 1056              	.L94:
+ 1057              	.LBB13:
+ 154:configuration.cpp **** 					if(message==0)rprintf("GGA Messages ");
+ 1058              		.loc 1 154 0
+ 1059 0898 000057E3 		cmp	r7, #0
+ 1060 089c CC029F05 		ldreq	r0, .L114+208
+ 1061 08a0 0E00000A 		beq	.L109
+ 155:configuration.cpp **** 					if(message==1)rprintf("GLL Messages ");
+ 1062              		.loc 1 155 0
+ 1063 08a4 010057E3 		cmp	r7, #1
+ 1064 08a8 C4029F05 		ldreq	r0, .L114+212
+ 1065 08ac 0B00000A 		beq	.L109
+ 156:configuration.cpp **** 					if(message==2)rprintf("GSA Messages ");
+ 1066              		.loc 1 156 0
+ 1067 08b0 020057E3 		cmp	r7, #2
+ 1068 08b4 BC029F05 		ldreq	r0, .L114+216
+ 1069 08b8 0800000A 		beq	.L109
+ 157:configuration.cpp **** 					if(message==3)rprintf("GSV Messages ");
+ 1070              		.loc 1 157 0
+ 1071 08bc 030057E3 		cmp	r7, #3
+ 1072 08c0 B4029F05 		ldreq	r0, .L114+220
+ 1073 08c4 0500000A 		beq	.L109
+ 158:configuration.cpp **** 					if(message==4)rprintf("RMC Messages ");
+ 1074              		.loc 1 158 0
+ 1075 08c8 040057E3 		cmp	r7, #4
+ 1076 08cc AC029F05 		ldreq	r0, .L114+224
+ 1077 08d0 0200000A 		beq	.L109
+ 159:configuration.cpp **** 					if(message==5)rprintf("VTG Messages ");
+ 1078              		.loc 1 159 0
+ 1079 08d4 050057E3 		cmp	r7, #5
+ 1080 08d8 0100001A 		bne	.L91
+ 159:configuration.cpp **** 					if(message==5)rprintf("VTG Messages ");
+ 1081              		.loc 1 159 0 is_stmt 0 discriminator 1
+ 1082 08dc A0029FE5 		ldr	r0, .L114+228
+ 1083              	.L109:
+ 1084 08e0 FEFFFFEB 		bl	rprintf
+ 1085              	.L91:
+ 160:configuration.cpp **** 					rprintf("%d\n", configuration.gps_messages[message]);
+ 1086              		.loc 1 160 0 is_stmt 1
+ 1087 08e4 0010D8E5 		ldrb	r1, [r8, #0]	@ zero_extendqisi2
+ 1088 08e8 98029FE5 		ldr	r0, .L114+232
+ 1089 08ec FEFFFFEB 		bl	rprintf
+ 161:configuration.cpp **** 					selection = enablePrompt();
+ 1090              		.loc 1 161 0
+ 1091 08f0 FEFFFFEB 		bl	_Z12enablePromptv
+ 1092              	.LVL49:
+ 152:configuration.cpp **** 				for(int message=0; message<6; message++)
+ 1093              		.loc 1 152 0
+ 1094 08f4 017087E2 		add	r7, r7, #1
+ 1095              	.LVL50:
+ 162:configuration.cpp **** 					if(selection > '0')configuration.gps_messages[message]=1;
+ 1096              		.loc 1 162 0
+ 1097 08f8 300050E3 		cmp	r0, #48
+ 1098 08fc 0000A093 		movls	r0, #0
+ 1099              	.LVL51:
+ 1100 0900 0100A083 		movhi	r0, #1
+ 152:configuration.cpp **** 				for(int message=0; message<6; message++)
+ 1101              		.loc 1 152 0
+ 1102 0904 060057E3 		cmp	r7, #6
+ 162:configuration.cpp **** 					if(selection > '0')configuration.gps_messages[message]=1;
+ 1103              		.loc 1 162 0
+ 1104 0908 0100C8E4 		strb	r0, [r8], #1
+ 152:configuration.cpp **** 				for(int message=0; message<6; message++)
+ 1105              		.loc 1 152 0
+ 1106 090c E1FFFF1A 		bne	.L94
+ 1107 0910 400000EA 		b	.L101
+ 1108              	.LVL52:
+ 1109              	.L80:
+ 1110              	.LBE13:
+ 168:configuration.cpp **** 				rprintf("\nCalibration\n");
+ 1111              		.loc 1 168 0
+ 1112 0914 70029FE5 		ldr	r0, .L114+236
+ 1113 0918 FEFFFFEB 		bl	rprintf
+ 169:configuration.cpp **** 				rprintf("Set the IMU in it's normal orientation and protect it from any movement.\n");
+ 1114              		.loc 1 169 0
+ 1115 091c 6C029FE5 		ldr	r0, .L114+240
+ 1116 0920 FEFFFFEB 		bl	rprintf
+ 170:configuration.cpp **** 				rprintf("Press any key to start calibration\n");
+ 1117              		.loc 1 170 0
+ 1118 0924 68029FE5 		ldr	r0, .L114+244
+ 1119 0928 FEFFFFEB 		bl	rprintf
+ 171:configuration.cpp **** 				rprintf("When calibration is finished, the config menu will be presented and you may\n");
+ 1120              		.loc 1 171 0
+ 1121 092c 64029FE5 		ldr	r0, .L114+248
+ 1122 0930 FEFFFFEB 		bl	rprintf
+ 172:configuration.cpp **** 				rprintf("continue normal operation.\n");
+ 1123              		.loc 1 172 0
+ 1124 0934 60029FE5 		ldr	r0, .L114+252
+ 1125 0938 FEFFFFEB 		bl	rprintf
+ 173:configuration.cpp **** 				selection = getc0();
+ 1126              		.loc 1 173 0
+ 1127 093c FEFFFFEB 		bl	getc0
+ 1128              	.LVL53:
+ 174:configuration.cpp **** 				rprintf("Starting Calibration, don't move the device!\n");
+ 1129              		.loc 1 174 0
+ 1130 0940 58029FE5 		ldr	r0, .L114+256
+ 1131 0944 FEFFFFEB 		bl	rprintf
+ 175:configuration.cpp **** 				accelerometer.calibrate();
+ 1132              		.loc 1 175 0
+ 1133 0948 54029FE5 		ldr	r0, .L114+260
+ 1134 094c FEFFFFEB 		bl	_ZN8cADXL3459calibrateEv
+ 176:configuration.cpp **** 				gyro.calibrate();
+ 1135              		.loc 1 176 0
+ 1136 0950 50029FE5 		ldr	r0, .L114+264
+ 1137 0954 FEFFFFEB 		bl	_ZN8cITG32009calibrateEv
+ 177:configuration.cpp **** 				configuration.cal_ax=accelerometer.getXcal();
+ 1138              		.loc 1 177 0
+ 1139 0958 44029FE5 		ldr	r0, .L114+260
+ 1140 095c FEFFFFEB 		bl	_ZN8cADXL3457getXcalEv
+ 1141 0960 100084E5 		str	r0, [r4, #16]
+ 178:configuration.cpp **** 				configuration.cal_ay=accelerometer.getYcal();
+ 1142              		.loc 1 178 0
+ 1143 0964 38029FE5 		ldr	r0, .L114+260
+ 1144 0968 FEFFFFEB 		bl	_ZN8cADXL3457getYcalEv
+ 1145 096c 140084E5 		str	r0, [r4, #20]
+ 179:configuration.cpp **** 				configuration.cal_az=accelerometer.getZcal();
+ 1146              		.loc 1 179 0
+ 1147 0970 2C029FE5 		ldr	r0, .L114+260
+ 1148 0974 FEFFFFEB 		bl	_ZN8cADXL3457getZcalEv
+ 1149 0978 180084E5 		str	r0, [r4, #24]	@ float
+ 180:configuration.cpp **** 				configuration.cal_gx=gyro.getXcal();
+ 1150              		.loc 1 180 0
+ 1151 097c 24029FE5 		ldr	r0, .L114+264
+ 1152 0980 FEFFFFEB 		bl	_ZN8cITG32007getXcalEv
+ 1153 0984 1C0084E5 		str	r0, [r4, #28]
+ 181:configuration.cpp **** 				configuration.cal_gy=gyro.getYcal();
+ 1154              		.loc 1 181 0
+ 1155 0988 18029FE5 		ldr	r0, .L114+264
+ 1156 098c FEFFFFEB 		bl	_ZN8cITG32007getYcalEv
+ 1157 0990 200084E5 		str	r0, [r4, #32]
+ 182:configuration.cpp **** 				configuration.cal_gz=gyro.getZcal();
+ 1158              		.loc 1 182 0
+ 1159 0994 0C029FE5 		ldr	r0, .L114+264
+ 1160 0998 FEFFFFEB 		bl	_ZN8cITG32007getZcalEv
+ 1161 099c 240084E5 		str	r0, [r4, #36]
+ 183:configuration.cpp **** 				rprintf("Finished!\n");
+ 1162              		.loc 1 183 0
+ 1163 09a0 04029FE5 		ldr	r0, .L114+268
+ 1164 09a4 FEFFFFEB 		bl	rprintf
+ 184:configuration.cpp **** 				break;
+ 1165              		.loc 1 184 0
+ 1166 09a8 1A0000EA 		b	.L101
+ 1167              	.LVL54:
+ 1168              	.L81:
+ 187:configuration.cpp **** 				rprintf("\nChoose 'enable' for Euler Angle Output or 'disable' for Raw Output\n");
+ 1169              		.loc 1 187 0
+ 1170 09ac FC019FE5 		ldr	r0, .L114+272
+ 1171 09b0 FEFFFFEB 		bl	rprintf
+ 188:configuration.cpp **** 				rprintf("Setting will apply to the log file data (if enabled) and the serial output (if enabled
+ 1172              		.loc 1 188 0
+ 1173 09b4 F8019FE5 		ldr	r0, .L114+276
+ 1174 09b8 FEFFFFEB 		bl	rprintf
+ 189:configuration.cpp **** 				selection = enablePrompt();
+ 1175              		.loc 1 189 0
+ 1176 09bc FEFFFFEB 		bl	_Z12enablePromptv
+ 1177              	.LVL55:
+ 190:configuration.cpp **** 				if(selection == '0')configuration.output_euler=0;
+ 1178              		.loc 1 190 0
+ 1179 09c0 300050E3 		cmp	r0, #48
+ 1180 09c4 0030A003 		moveq	r3, #0
+ 191:configuration.cpp **** 				else configuration.output_euler=1;
+ 1181              		.loc 1 191 0
+ 1182 09c8 0130A013 		movne	r3, #1
+ 1183 09cc 0B30C4E5 		strb	r3, [r4, #11]
+ 1184 09d0 100000EA 		b	.L101
+ 1185              	.LVL56:
+ 1186              	.L82:
+ 195:configuration.cpp **** 				rprintf("\nChoose which messages to send to the serial port.\n");
+ 1187              		.loc 1 195 0
+ 1188 09d4 DC019FE5 		ldr	r0, .L114+280
+ 1189 09d8 FEFFFFEB 		bl	rprintf
+ 196:configuration.cpp **** 				rprintf("Caution: The more messages that are enabled, the slower the sensors are updated!\n");
+ 1190              		.loc 1 196 0
+ 1191 09dc D8019FE5 		ldr	r0, .L114+284
+ 1192 09e0 FEFFFFEB 		bl	rprintf
+ 197:configuration.cpp **** 				rprintf("1.) No messages\n2.) Sensor Data\n3.) GPS Data\n4.) Sensor and GPS Data\n");
+ 1193              		.loc 1 197 0
+ 1194 09e4 D4019FE5 		ldr	r0, .L114+288
+ 1195 09e8 FEFFFFEB 		bl	rprintf
+ 198:configuration.cpp **** 				rprintf("Selection: ");
+ 1196              		.loc 1 198 0
+ 1197 09ec 60019FE5 		ldr	r0, .L114+180
+ 1198 09f0 FEFFFFEB 		bl	rprintf
+ 199:configuration.cpp **** 				selection = getc0();
+ 1199              		.loc 1 199 0
+ 1200 09f4 FEFFFFEB 		bl	getc0
+ 1201 09f8 FF7000E2 		and	r7, r0, #255
+ 1202              	.LVL57:
+ 200:configuration.cpp **** 				rprintf("%c\n", selection);
+ 1203              		.loc 1 200 0
+ 1204 09fc 0710A0E1 		mov	r1, r7
+ 201:configuration.cpp **** 				if(selection > '0' && selection < '5'){
+ 1205              		.loc 1 201 0
+ 1206 0a00 317047E2 		sub	r7, r7, #49
+ 1207              	.LVL58:
+ 1208 0a04 FF7007E2 		and	r7, r7, #255
+ 200:configuration.cpp **** 				rprintf("%c\n", selection);
+ 1209              		.loc 1 200 0
+ 1210 0a08 48019FE5 		ldr	r0, .L114+184
+ 1211 0a0c FEFFFFEB 		bl	rprintf
+ 1212              	.LVL59:
+ 201:configuration.cpp **** 				if(selection > '0' && selection < '5'){
+ 1213              		.loc 1 201 0
+ 1214 0a10 030057E3 		cmp	r7, #3
+ 203:configuration.cpp **** 					configuration.output_messages = selection -1;
+ 1215              		.loc 1 203 0
+ 1216 0a14 0C70C495 		strlsb	r7, [r4, #12]
+ 1217              	.L101:
+ 1218              	.LBE12:
+ 1219              	.LBE14:
+  50:configuration.cpp **** 		rprintf("\n- Ultimate IMU Configuration -\n");
+ 1220              		.loc 1 50 0 discriminator 1
+ 1221 0a18 A4019FE5 		ldr	r0, .L114+292
+ 1222 0a1c FEFFFFEB 		bl	rprintf
+  51:configuration.cpp **** 		rprintf("- Version %d.%d -\n", major_version, minor_version);
+ 1223              		.loc 1 51 0 discriminator 1
+ 1224 0a20 A0319FE5 		ldr	r3, .L114+296
+ 1225 0a24 0010D6E5 		ldrb	r1, [r6, #0]	@ zero_extendqisi2
+ 1226 0a28 0020D3E5 		ldrb	r2, [r3, #0]	@ zero_extendqisi2
+ 1227 0a2c 98019FE5 		ldr	r0, .L114+300
+ 1228 0a30 FEFFFFEB 		bl	rprintf
+  52:configuration.cpp **** 		rprintf("_______________________________\n");
+ 1229              		.loc 1 52 0 discriminator 1
+ 1230 0a34 94019FE5 		ldr	r0, .L114+304
+ 1231 0a38 FEFFFFEB 		bl	rprintf
+  53:configuration.cpp **** 		rprintf("1.) Log Sensor Data ");
+ 1232              		.loc 1 53 0 discriminator 1
+ 1233 0a3c 90019FE5 		ldr	r0, .L114+308
+ 1234 0a40 FEFFFFEB 		bl	rprintf
+  54:configuration.cpp **** 			if(configuration.log_sensor)rprintf("(Enabled)\n");
+ 1235              		.loc 1 54 0 discriminator 1
+ 1236 0a44 0030D4E5 		ldrb	r3, [r4, #0]	@ zero_extendqisi2
+ 1237 0a48 000053E3 		cmp	r3, #0
+ 1238 0a4c 5C009F15 		ldrne	r0, .L114+16
+ 1239 0a50 DEFEFF1A 		bne	.L103
+ 1240 0a54 DCFEFFEA 		b	.L113
+ 1241              	.LVL60:
+ 1242              	.L74:
+ 1243              	.LBE16:
+ 211:configuration.cpp **** 	configData.close();
+ 1244              		.loc 1 211 0 discriminator 1
+ 1245 0a58 2C408DE2 		add	r4, sp, #44
+ 1246 0a5c 0400A0E1 		mov	r0, r4
+ 1247 0a60 FEFFFFEB 		bl	_ZN7cMemory5closeEv
+ 212:configuration.cpp **** 	configData.open("configuration.txt");
+ 1248              		.loc 1 212 0 discriminator 1
+ 1249 0a64 0400A0E1 		mov	r0, r4
+ 1250 0a68 68119FE5 		ldr	r1, .L114+312
+ 1251 0a6c FEFFFFEB 		bl	_ZN7cMemory4openEPc
+ 213:configuration.cpp **** 	saveConfigData(configData);
+ 1252              		.loc 1 213 0 discriminator 1
+ 1253 0a70 3CE08DE2 		add	lr, sp, #60
+ 1254 0a74 0F00BEE8 		ldmia	lr!, {r0, r1, r2, r3}
+ 1255 0a78 0DC0A0E1 		mov	ip, sp
+ 1256 0a7c 0F00ACE8 		stmia	ip!, {r0, r1, r2, r3}
+ 1257 0a80 00309EE5 		ldr	r3, [lr, #0]
+ 1258 0a84 00308CE5 		str	r3, [ip, #0]
+ 1259 0a88 0F0094E8 		ldmia	r4, {r0, r1, r2, r3}
+ 1260 0a8c FEFFFFEB 		bl	_Z14saveConfigData7cMemory
+ 1261              	.LBE17:
+ 214:configuration.cpp **** }
+ 1262              		.loc 1 214 0 discriminator 1
+ 1263 0a90 14D08DE2 		add	sp, sp, #20
+ 1264 0a94 F041BDE8 		ldmfd	sp!, {r4, r5, r6, r7, r8, lr}
+ 1265 0a98 10D08DE2 		add	sp, sp, #16
+ 1266 0a9c 1EFF2FE1 		bx	lr
+ 1267              	.L115:
+ 1268              		.align	2
+ 1269              	.L114:
+ 1270 0aa0 00000000 		.word	.LANCHOR0
+ 1271 0aa4 00000000 		.word	major_version
+ 1272 0aa8 17010000 		.word	.LC9
+ 1273 0aac 22010000 		.word	.LC10
+ 1274 0ab0 0C010000 		.word	.LC8
+ 1275 0ab4 34010000 		.word	.LC11
+ 1276 0ab8 40010000 		.word	.LC12
+ 1277 0abc 5D010000 		.word	.LC13
+ 1278 0ac0 62010000 		.word	.LC14
+ 1279 0ac4 67010000 		.word	.LC15
+ 1280 0ac8 6C010000 		.word	.LC16
+ 1281 0acc 72010000 		.word	.LC17
+ 1282 0ad0 89010000 		.word	.LC18
+ 1283 0ad4 8D010000 		.word	.LC19
+ 1284 0ad8 91010000 		.word	.LC20
+ 1285 0adc 95010000 		.word	.LC21
+ 1286 0ae0 99010000 		.word	.LC22
+ 1287 0ae4 9D010000 		.word	.LC23
+ 1288 0ae8 A1010000 		.word	.LC24
+ 1289 0aec A5010000 		.word	.LC25
+ 1290 0af0 A9010000 		.word	.LC26
+ 1291 0af4 AE010000 		.word	.LC27
+ 1292 0af8 C1010000 		.word	.LC28
+ 1293 0afc C7010000 		.word	.LC29
+ 1294 0b00 CD010000 		.word	.LC30
+ 1295 0b04 D3010000 		.word	.LC31
+ 1296 0b08 D9010000 		.word	.LC32
+ 1297 0b0c DF010000 		.word	.LC33
+ 1298 0b10 E5010000 		.word	.LC34
+ 1299 0b14 E8010000 		.word	.LC35
+ 1300 0b18 FB010000 		.word	.LC36
+ 1301 0b1c 0F020000 		.word	.LC37
+ 1302 0b20 17020000 		.word	.LC38
+ 1303 0b24 1D020000 		.word	.LC39
+ 1304 0b28 3A020000 		.word	.LC40
+ 1305 0b2c 41020000 		.word	.LC41
+ 1306 0b30 4F020000 		.word	.LC42
+ 1307 0b34 5A020000 		.word	.LC43
+ 1308 0b38 70020000 		.word	.LC44
+ 1309 0b3c 7A020000 		.word	.LC45
+ 1310 0b40 87020000 		.word	.LC46
+ 1311 0b44 8C020000 		.word	.LC47
+ 1312 0b48 9E020000 		.word	.LC48
+ 1313 0b4c AD020000 		.word	.LC49
+ 1314 0b50 C3020000 		.word	.LC50
+ 1315 0b54 58000000 		.word	.LC4
+ 1316 0b58 64000000 		.word	.LC5
+ 1317 0b5c EB020000 		.word	.LC51
+ 1318 0b60 FB020000 		.word	.LC52
+ 1319 0b64 3F030000 		.word	.LC53
+ 1320 0b68 74030000 		.word	.LC54
+ 1321 0b6c 04000000 		.word	.LANCHOR0+4
+ 1322 0b70 8D030000 		.word	.LC55
+ 1323 0b74 9B030000 		.word	.LC56
+ 1324 0b78 A9030000 		.word	.LC57
+ 1325 0b7c B7030000 		.word	.LC58
+ 1326 0b80 C5030000 		.word	.LC59
+ 1327 0b84 D3030000 		.word	.LC60
+ 1328 0b88 E1030000 		.word	.LC61
+ 1329 0b8c E5030000 		.word	.LC62
+ 1330 0b90 F3030000 		.word	.LC63
+ 1331 0b94 3D040000 		.word	.LC64
+ 1332 0b98 61040000 		.word	.LC65
+ 1333 0b9c AE040000 		.word	.LC66
+ 1334 0ba0 CA040000 		.word	.LC67
+ 1335 0ba4 00000000 		.word	accelerometer
+ 1336 0ba8 00000000 		.word	gyro
+ 1337 0bac F8040000 		.word	.LC68
+ 1338 0bb0 03050000 		.word	.LC69
+ 1339 0bb4 48050000 		.word	.LC70
+ 1340 0bb8 A1050000 		.word	.LC71
+ 1341 0bbc D5050000 		.word	.LC72
+ 1342 0bc0 27060000 		.word	.LC73
+ 1343 0bc4 6D060000 		.word	.LC74
+ 1344 0bc8 00000000 		.word	minor_version
+ 1345 0bcc 8E060000 		.word	.LC75
+ 1346 0bd0 A1060000 		.word	.LC76
+ 1347 0bd4 C2060000 		.word	.LC77
+ 1348 0bd8 00000000 		.word	.LC1
+ 1349              		.cfi_endproc
+ 1350              	.LFE3:
+ 1352              		.section	.text.startup,"ax",%progbits
+ 1353              		.align	2
+ 1355              	_GLOBAL__sub_I_configuration:
+ 1356              	.LFB9:
+ 1357              		.loc 1 347 0
+ 1358              		.cfi_startproc
+ 1359              		@ Function supports interworking.
+ 1360              		@ args = 0, pretend = 0, frame = 0
+ 1361              		@ frame_needed = 0, uses_anonymous_args = 0
+ 1362              	.LVL61:
+ 1363 0000 04E02DE5 		str	lr, [sp, #-4]!
+ 1364              	.LCFI13:
+ 1365              		.cfi_def_cfa_offset 4
+ 1366              		.cfi_offset 14, -4
+ 1367              	.LBB18:
+ 1368              	.LBB19:
+  23:configuration.cpp **** cConfig configuration;
+ 1369              		.loc 1 23 0
+ 1370 0004 08009FE5 		ldr	r0, .L117
+ 1371 0008 FEFFFFEB 		bl	_ZN7cConfigC1Ev
+ 1372              	.LBE19:
+ 1373              	.LBE18:
+ 1374              		.loc 1 347 0
+ 1375 000c 04E09DE4 		ldr	lr, [sp], #4
+ 1376 0010 1EFF2FE1 		bx	lr
+ 1377              	.L118:
+ 1378              		.align	2
+ 1379              	.L117:
+ 1380 0014 00000000 		.word	.LANCHOR0
+ 1381              		.cfi_endproc
+ 1382              	.LFE9:
+ 1384              		.section	.ctors,"aw",%progbits
+ 1385              		.align	2
+ 1386 0000 00000000 		.word	_GLOBAL__sub_I_configuration
+ 1387              		.global	log_string
+ 1388              		.global	configuration
+ 1389              		.global	_ZN7cConfigC1Ev
+ 1390              		.set	_ZN7cConfigC1Ev,_ZN7cConfigC2Ev
+ 1391              		.section	.rodata.str1.1,"aMS",%progbits,1
+ 1392              	.LC1:
+ 1393 0000 636F6E66 		.ascii	"configuration.txt\000"
+ 1393      69677572 
+ 1393      6174696F 
+ 1393      6E2E7478 
+ 1393      7400
+ 1394              	.LC2:
+ 1395 0012 496E7661 		.ascii	"Invalid configuration.txt file\000"
+ 1395      6C696420 
+ 1395      636F6E66 
+ 1395      69677572 
+ 1395      6174696F 
+ 1396              	.LC0:
+ 1397 0031 3D2C00   		.ascii	"=,\000"
+ 1398              	.LC3:
+ 1399 0034 50726573 		.ascii	"Press 1 to enable or 0 to disable.\012\000"
+ 1399      73203120 
+ 1399      746F2065 
+ 1399      6E61626C 
+ 1399      65206F72 
+ 1400              	.LC4:
+ 1401 0058 53656C65 		.ascii	"Selection: \000"
+ 1401      6374696F 
+ 1401      6E3A2000 
+ 1402              	.LC5:
+ 1403 0064 25630A00 		.ascii	"%c\012\000"
+ 1404              	.LC6:
+ 1405 0068 6C6F675F 		.ascii	"log_sensor=%d\012log_gps=%d\012range_accel=%d\012ra"
+ 1405      73656E73 
+ 1405      6F723D25 
+ 1405      640A6C6F 
+ 1405      675F6770 
+ 1406 0092 6E67655F 		.ascii	"nge_compass=%d\012msgs=%d,%d,%d,%d,%d,%d\012euler=%"
+ 1406      636F6D70 
+ 1406      6173733D 
+ 1406      25640A6D 
+ 1406      7367733D 
+ 1407 00bf 640A7365 		.ascii	"d\012serial=%d\012\000"
+ 1407      7269616C 
+ 1407      3D25640A 
+ 1407      00
+ 1408              	.LC7:
+ 1409 00cc 63616C5F 		.ascii	"cal_ax=%d\012cal_ay=%d\012cal_az=%5.2f\012cal_gx=%d"
+ 1409      61783D25 
+ 1409      640A6361 
+ 1409      6C5F6179 
+ 1409      3D25640A 
+ 1410 00f6 0A63616C 		.ascii	"\012cal_gy=%d\012cal_gz=%d\012\000"
+ 1410      5F67793D 
+ 1410      25640A63 
+ 1410      616C5F67 
+ 1410      7A3D2564 
+ 1411              	.LC8:
+ 1412 010c 28456E61 		.ascii	"(Enabled)\012\000"
+ 1412      626C6564 
+ 1412      290A00
+ 1413              	.LC9:
+ 1414 0117 28446973 		.ascii	"(Disabled\012\000"
+ 1414      61626C65 
+ 1414      640A00
+ 1415              	.LC10:
+ 1416 0122 322E2920 		.ascii	"2.) Log GPS Data \000"
+ 1416      4C6F6720 
+ 1416      47505320 
+ 1416      44617461 
+ 1416      2000
+ 1417              	.LC11:
+ 1418 0134 28446973 		.ascii	"(Disabled)\012\000"
+ 1418      61626C65 
+ 1418      64290A00 
+ 1419              	.LC12:
+ 1420 0140 332E2920 		.ascii	"3.) Accelerometer Range (+/-\000"
+ 1420      41636365 
+ 1420      6C65726F 
+ 1420      6D657465 
+ 1420      72205261 
+ 1421              	.LC13:
+ 1422 015d 3267290A 		.ascii	"2g)\012\000"
+ 1422      00
+ 1423              	.LC14:
+ 1424 0162 3467290A 		.ascii	"4g)\012\000"
+ 1424      00
+ 1425              	.LC15:
+ 1426 0167 3867290A 		.ascii	"8g)\012\000"
+ 1426      00
+ 1427              	.LC16:
+ 1428 016c 31366729 		.ascii	"16g)\012\000"
+ 1428      0A00
+ 1429              	.LC17:
+ 1430 0172 342E2920 		.ascii	"4.) Compass Range (+/-\000"
+ 1430      436F6D70 
+ 1430      61737320 
+ 1430      52616E67 
+ 1430      6520282B 
+ 1431              	.LC18:
+ 1432 0189 302E3700 		.ascii	"0.7\000"
+ 1433              	.LC19:
+ 1434 018d 312E3000 		.ascii	"1.0\000"
+ 1435              	.LC20:
+ 1436 0191 312E3500 		.ascii	"1.5\000"
+ 1437              	.LC21:
+ 1438 0195 322E3000 		.ascii	"2.0\000"
+ 1439              	.LC22:
+ 1440 0199 332E3200 		.ascii	"3.2\000"
+ 1441              	.LC23:
+ 1442 019d 332E3800 		.ascii	"3.8\000"
+ 1443              	.LC24:
+ 1444 01a1 342E3500 		.ascii	"4.5\000"
+ 1445              	.LC25:
+ 1446 01a5 362E3500 		.ascii	"6.5\000"
+ 1447              	.LC26:
+ 1448 01a9 4761290A 		.ascii	"Ga)\012\000"
+ 1448      00
+ 1449              	.LC27:
+ 1450 01ae 352E2920 		.ascii	"5.) GPS Messages (\000"
+ 1450      47505320 
+ 1450      4D657373 
+ 1450      61676573 
+ 1450      202800
+ 1451              	.LC28:
+ 1452 01c1 4747412C 		.ascii	"GGA, \000"
+ 1452      2000
+ 1453              	.LC29:
+ 1454 01c7 474C4C2C 		.ascii	"GLL, \000"
+ 1454      2000
+ 1455              	.LC30:
+ 1456 01cd 4753412C 		.ascii	"GSA, \000"
+ 1456      2000
+ 1457              	.LC31:
+ 1458 01d3 4753562C 		.ascii	"GSV, \000"
+ 1458      2000
+ 1459              	.LC32:
+ 1460 01d9 524D432C 		.ascii	"RMC, \000"
+ 1460      2000
+ 1461              	.LC33:
+ 1462 01df 5654472C 		.ascii	"VTG, \000"
+ 1462      2000
+ 1463              	.LC34:
+ 1464 01e5 290A00   		.ascii	")\012\000"
+ 1465              	.LC35:
+ 1466 01e8 362E2920 		.ascii	"6.) Calibrate IMU\012\000"
+ 1466      43616C69 
+ 1466      62726174 
+ 1466      6520494D 
+ 1466      550A00
+ 1467              	.LC36:
+ 1468 01fb 372E2920 		.ascii	"7.) Sensor Output (\000"
+ 1468      53656E73 
+ 1468      6F72204F 
+ 1468      75747075 
+ 1468      74202800 
+ 1469              	.LC37:
+ 1470 020f 45756C65 		.ascii	"Euler)\012\000"
+ 1470      72290A00 
+ 1471              	.LC38:
+ 1472 0217 52617729 		.ascii	"Raw)\012\000"
+ 1472      0A00
+ 1473              	.LC39:
+ 1474 021d 382E2920 		.ascii	"8.) Serial Output Messages (\000"
+ 1474      53657269 
+ 1474      616C204F 
+ 1474      75747075 
+ 1474      74204D65 
+ 1475              	.LC40:
+ 1476 023a 4E6F6E65 		.ascii	"None)\012\000"
+ 1476      290A00
+ 1477              	.LC41:
+ 1478 0241 53656E73 		.ascii	"Sensor Data)\012\000"
+ 1478      6F722044 
+ 1478      61746129 
+ 1478      0A00
+ 1479              	.LC42:
+ 1480 024f 47505320 		.ascii	"GPS Data)\012\000"
+ 1480      44617461 
+ 1480      290A00
+ 1481              	.LC43:
+ 1482 025a 53656E73 		.ascii	"Sensor and GPS data)\012\000"
+ 1482      6F722061 
+ 1482      6E642047 
+ 1482      50532064 
+ 1482      61746129 
+ 1483              	.LC44:
+ 1484 0270 392E2920 		.ascii	"9.) Exit\012\000"
+ 1484      45786974 
+ 1484      0A00
+ 1485              	.LC45:
+ 1486 027a 0A53656C 		.ascii	"\012Selection: \000"
+ 1486      65637469 
+ 1486      6F6E3A20 
+ 1486      00
+ 1487              	.LC46:
+ 1488 0287 25630A0A 		.ascii	"%c\012\012\000"
+ 1488      00
+ 1489              	.LC47:
+ 1490 028c 0A4C6F67 		.ascii	"\012Log Sensor Data\012\000"
+ 1490      2053656E 
+ 1490      736F7220 
+ 1490      44617461 
+ 1490      0A00
+ 1491              	.LC48:
+ 1492 029e 0A4C6F67 		.ascii	"\012Log GPS Data\012\000"
+ 1492      20475053 
+ 1492      20446174 
+ 1492      610A00
+ 1493              	.LC49:
+ 1494 02ad 0A416363 		.ascii	"\012Accelerometer Range\012\000"
+ 1494      656C6572 
+ 1494      6F6D6574 
+ 1494      65722052 
+ 1494      616E6765 
+ 1495              	.LC50:
+ 1496 02c3 53656C65 		.ascii	"Select Range:\0121.)2g\0122.)4g\0123.)8g\0124.)16g\012"
+ 1496      63742052 
+ 1496      616E6765 
+ 1496      3A0A312E 
+ 1496      2932670A 
+ 1497 02ea 00       		.ascii	"\000"
+ 1498              	.LC51:
+ 1499 02eb 0A436F6D 		.ascii	"\012Compass Range\012\000"
+ 1499      70617373 
+ 1499      2052616E 
+ 1499      67650A00 
+ 1500              	.LC52:
+ 1501 02fb 53656C65 		.ascii	"Select Range:\0121.) +/-0.7Ga\0122.) +/-1.0Ga\0123."
+ 1501      63742052 
+ 1501      616E6765 
+ 1501      3A0A312E 
+ 1501      29202B2F 
+ 1502 0325 29202B2F 		.ascii	") +/-1.5Ga\012 4.) +/-2.0Ga\012\000"
+ 1502      2D312E35 
+ 1502      47610A20 
+ 1502      342E2920 
+ 1502      2B2F2D32 
+ 1503              	.LC53:
+ 1504 033f 352E2920 		.ascii	"5.) +/-3.2Ga\0126.) +/-3.8Ga\0127.) +/-4.5Ga\0128.)"
+ 1504      2B2F2D33 
+ 1504      2E324761 
+ 1504      0A362E29 
+ 1504      202B2F2D 
+ 1505 0369 202B2F2D 		.ascii	" +/-6.5Ga\012\000"
+ 1505      362E3547 
+ 1505      610A00
+ 1506              	.LC54:
+ 1507 0374 0A436F6E 		.ascii	"\012Configure GPS Messages\012\000"
+ 1507      66696775 
+ 1507      72652047 
+ 1507      5053204D 
+ 1507      65737361 
+ 1508              	.LC55:
+ 1509 038d 47474120 		.ascii	"GGA Messages \000"
+ 1509      4D657373 
+ 1509      61676573 
+ 1509      2000
+ 1510              	.LC56:
+ 1511 039b 474C4C20 		.ascii	"GLL Messages \000"
+ 1511      4D657373 
+ 1511      61676573 
+ 1511      2000
+ 1512              	.LC57:
+ 1513 03a9 47534120 		.ascii	"GSA Messages \000"
+ 1513      4D657373 
+ 1513      61676573 
+ 1513      2000
+ 1514              	.LC58:
+ 1515 03b7 47535620 		.ascii	"GSV Messages \000"
+ 1515      4D657373 
+ 1515      61676573 
+ 1515      2000
+ 1516              	.LC59:
+ 1517 03c5 524D4320 		.ascii	"RMC Messages \000"
+ 1517      4D657373 
+ 1517      61676573 
+ 1517      2000
+ 1518              	.LC60:
+ 1519 03d3 56544720 		.ascii	"VTG Messages \000"
+ 1519      4D657373 
+ 1519      61676573 
+ 1519      2000
+ 1520              	.LC61:
+ 1521 03e1 25640A00 		.ascii	"%d\012\000"
+ 1522              	.LC62:
+ 1523 03e5 0A43616C 		.ascii	"\012Calibration\012\000"
+ 1523      69627261 
+ 1523      74696F6E 
+ 1523      0A00
+ 1524              	.LC63:
+ 1525 03f3 53657420 		.ascii	"Set the IMU in it's normal orientation and protect "
+ 1525      74686520 
+ 1525      494D5520 
+ 1525      696E2069 
+ 1525      74277320 
+ 1526 0426 69742066 		.ascii	"it from any movement.\012\000"
+ 1526      726F6D20 
+ 1526      616E7920 
+ 1526      6D6F7665 
+ 1526      6D656E74 
+ 1527              	.LC64:
+ 1528 043d 50726573 		.ascii	"Press any key to start calibration\012\000"
+ 1528      7320616E 
+ 1528      79206B65 
+ 1528      7920746F 
+ 1528      20737461 
+ 1529              	.LC65:
+ 1530 0461 5768656E 		.ascii	"When calibration is finished, the config menu will "
+ 1530      2063616C 
+ 1530      69627261 
+ 1530      74696F6E 
+ 1530      20697320 
+ 1531 0494 62652070 		.ascii	"be presented and you may\012\000"
+ 1531      72657365 
+ 1531      6E746564 
+ 1531      20616E64 
+ 1531      20796F75 
+ 1532              	.LC66:
+ 1533 04ae 636F6E74 		.ascii	"continue normal operation.\012\000"
+ 1533      696E7565 
+ 1533      206E6F72 
+ 1533      6D616C20 
+ 1533      6F706572 
+ 1534              	.LC67:
+ 1535 04ca 53746172 		.ascii	"Starting Calibration, don't move the device!\012\000"
+ 1535      74696E67 
+ 1535      2043616C 
+ 1535      69627261 
+ 1535      74696F6E 
+ 1536              	.LC68:
+ 1537 04f8 46696E69 		.ascii	"Finished!\012\000"
+ 1537      73686564 
+ 1537      210A00
+ 1538              	.LC69:
+ 1539 0503 0A43686F 		.ascii	"\012Choose 'enable' for Euler Angle Output or 'disa"
+ 1539      6F736520 
+ 1539      27656E61 
+ 1539      626C6527 
+ 1539      20666F72 
+ 1540 0533 626C6527 		.ascii	"ble' for Raw Output\012\000"
+ 1540      20666F72 
+ 1540      20526177 
+ 1540      204F7574 
+ 1540      7075740A 
+ 1541              	.LC70:
+ 1542 0548 53657474 		.ascii	"Setting will apply to the log file data (if enabled"
+ 1542      696E6720 
+ 1542      77696C6C 
+ 1542      20617070 
+ 1542      6C792074 
+ 1543 057b 2920616E 		.ascii	") and the serial output (if enabled)\012\000"
+ 1543      64207468 
+ 1543      65207365 
+ 1543      7269616C 
+ 1543      206F7574 
+ 1544              	.LC71:
+ 1545 05a1 0A43686F 		.ascii	"\012Choose which messages to send to the serial por"
+ 1545      6F736520 
+ 1545      77686963 
+ 1545      68206D65 
+ 1545      73736167 
+ 1546 05d1 742E0A00 		.ascii	"t.\012\000"
+ 1547              	.LC72:
+ 1548 05d5 43617574 		.ascii	"Caution: The more messages that are enabled, the sl"
+ 1548      696F6E3A 
+ 1548      20546865 
+ 1548      206D6F72 
+ 1548      65206D65 
+ 1549 0608 6F776572 		.ascii	"ower the sensors are updated!\012\000"
+ 1549      20746865 
+ 1549      2073656E 
+ 1549      736F7273 
+ 1549      20617265 
+ 1550              	.LC73:
+ 1551 0627 312E2920 		.ascii	"1.) No messages\0122.) Sensor Data\0123.) GPS Data\012"
+ 1551      4E6F206D 
+ 1551      65737361 
+ 1551      6765730A 
+ 1551      322E2920 
+ 1552 0654 342E2920 		.ascii	"4.) Sensor and GPS Data\012\000"
+ 1552      53656E73 
+ 1552      6F722061 
+ 1552      6E642047 
+ 1552      50532044 
+ 1553              	.LC74:
+ 1554 066d 0A2D2055 		.ascii	"\012- Ultimate IMU Configuration -\012\000"
+ 1554      6C74696D 
+ 1554      61746520 
+ 1554      494D5520 
+ 1554      436F6E66 
+ 1555              	.LC75:
+ 1556 068e 2D205665 		.ascii	"- Version %d.%d -\012\000"
+ 1556      7273696F 
+ 1556      6E202564 
+ 1556      2E256420 
+ 1556      2D0A00
+ 1557              	.LC76:
+ 1558 06a1 5F5F5F5F 		.ascii	"_______________________________\012\000"
+ 1558      5F5F5F5F 
+ 1558      5F5F5F5F 
+ 1558      5F5F5F5F 
+ 1558      5F5F5F5F 
+ 1559              	.LC77:
+ 1560 06c2 312E2920 		.ascii	"1.) Log Sensor Data \000"
+ 1560      4C6F6720 
+ 1560      53656E73 
+ 1560      6F722044 
+ 1560      61746120 
+ 1561              		.bss
+ 1562              		.align	2
+ 1563              		.set	.LANCHOR0,. + 0
+ 1566              	configuration:
+ 1567 0000 00000000 		.space	40
+ 1567      00000000 
+ 1567      00000000 
+ 1567      00000000 
+ 1567      00000000 
+ 1570              	log_string:
+ 1571 0028 00000000 		.space	101
+ 1571      00000000 
+ 1571      00000000 
+ 1571      00000000 
+ 1571      00000000 
+ 1572 008d 000000   		.text
+ 1573              	.Letext0:
+ 1574              		.file 2 "../Library/sdfat/memory.h"
+ 1575              		.file 3 "configuration.h"
+ 1576              		.file 4 "../Library/i2c/I2C.h"
+ 1577              		.file 5 "../Library/adxl345/ADXL345.h"
+ 1578              		.file 6 "../Library/itg3200/ITG3200.h"
+ 1579              		.file 7 "main.h"
+ 1580              		.file 8 "/opt/local/lib/gcc/arm-elf/4.6.1/../../../../arm-elf/include/stdint.h"
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 configuration.cpp
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccq4jrAJ.s:5      .text:0000000000000000 $a
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccq4jrAJ.s:8      .text:0000000000000000 _ZN7cConfigC2Ev
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccq4jrAJ.s:75     .text:0000000000000064 $d
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccq4jrAJ.s:79     .text:0000000000000068 $a
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccq4jrAJ.s:82     .text:0000000000000068 _Z14readConfigFile7cMemory
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccq4jrAJ.s:504    .text:0000000000000408 $d
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccq4jrAJ.s:511    .text:0000000000000418 $a
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccq4jrAJ.s:514    .text:0000000000000418 _Z12enablePromptv
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccq4jrAJ.s:549    .text:000000000000044c $d
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccq4jrAJ.s:556    .text:0000000000000458 $a
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccq4jrAJ.s:559    .text:0000000000000458 _Z14saveConfigData7cMemory
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccq4jrAJ.s:643    .text:0000000000000538 $d
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccq4jrAJ.s:649    .text:0000000000000544 $a
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccq4jrAJ.s:652    .text:0000000000000544 _Z16createConfigFile7cMemory
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccq4jrAJ.s:700    .text:00000000000005a4 $d
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccq4jrAJ.s:704    .text:00000000000005a8 $a
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccq4jrAJ.s:707    .text:00000000000005a8 _Z10configMenu7cMemory
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccq4jrAJ.s:793    .text:000000000000063c $d
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccq4jrAJ.s:803    .text:000000000000065c $a
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccq4jrAJ.s:945    .text:00000000000007a0 $d
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccq4jrAJ.s:956    .text:00000000000007c0 $a
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccq4jrAJ.s:1270   .text:0000000000000aa0 $d
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccq4jrAJ.s:1353   .text.startup:0000000000000000 $a
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccq4jrAJ.s:1355   .text.startup:0000000000000000 _GLOBAL__sub_I_configuration
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccq4jrAJ.s:8      .text:0000000000000000 _ZN7cConfigC1Ev
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccq4jrAJ.s:1380   .text.startup:0000000000000014 $d
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccq4jrAJ.s:1385   .ctors:0000000000000000 $d
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccq4jrAJ.s:1570   .bss:0000000000000028 log_string
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccq4jrAJ.s:1566   .bss:0000000000000000 configuration
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccq4jrAJ.s:1562   .bss:0000000000000000 $d
+                     .debug_frame:0000000000000010 $d
+
+UNDEFINED SYMBOLS
+memcpy
+_ZN7cMemory4openEPc
+_ZN7cMemory8readLineEPc
+strtok
+strtol
+strtof
+rprintf
+_ZN7cMemory5closeEv
+_Z12memoryDeletePc
+_Z5resetv
+getc0
+__extendsfdf2
+sprintf
+_ZN7cMemory4saveEPc
+_ZN7cMemory6createEPKc
+_ZN7cMemory4openEv
+_ZN8cADXL3459calibrateEv
+_ZN8cITG32009calibrateEv
+_ZN8cADXL3457getXcalEv
+_ZN8cADXL3457getYcalEv
+_ZN8cADXL3457getZcalEv
+_ZN8cITG32007getXcalEv
+_ZN8cITG32007getYcalEv
+_ZN8cITG32007getZcalEv
+major_version
+accelerometer
+gyro
+minor_version

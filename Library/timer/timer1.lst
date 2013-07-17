@@ -1,0 +1,354 @@
+   1              		.file	"timer1.c"
+   2              		.text
+   3              	.Ltext0:
+   4              		.cfi_sections	.debug_frame
+   5              		.global	__udivsi3
+   6              		.align	2
+   7              		.global	timer1Init
+   9              	timer1Init:
+  10              	.LFB0:
+  11              		.file 1 "../Library/timer/timer1.c"
+   1:../Library/timer/timer1.c **** #include "timer1.h"
+   2:../Library/timer/timer1.c **** #include "LPC214x.h"
+   3:../Library/timer/timer1.c **** #include "target.h"	//Needed for Fcclk
+   4:../Library/timer/timer1.c **** #include "rprintf.h"
+   5:../Library/timer/timer1.c **** #include "timer1ISR.h"
+   6:../Library/timer/timer1.c **** 
+   7:../Library/timer/timer1.c **** static unsigned long int tFreq;
+   8:../Library/timer/timer1.c **** 
+   9:../Library/timer/timer1.c **** void timer1Init(unsigned long int freq)
+  10:../Library/timer/timer1.c **** {
+  12              		.loc 1 10 0
+  13              		.cfi_startproc
+  14              		@ Function supports interworking.
+  15              		@ args = 0, pretend = 0, frame = 0
+  16              		@ frame_needed = 0, uses_anonymous_args = 0
+  17              	.LVL0:
+  11:../Library/timer/timer1.c **** 	tFreq=freq;
+  18              		.loc 1 11 0
+  19 0000 34309FE5 		ldr	r3, .L2
+  10:../Library/timer/timer1.c **** {
+  20              		.loc 1 10 0
+  21 0004 04E02DE5 		str	lr, [sp, #-4]!
+  22              	.LCFI0:
+  23              		.cfi_def_cfa_offset 4
+  24              		.cfi_offset 14, -4
+  10:../Library/timer/timer1.c **** {
+  25              		.loc 1 10 0
+  26 0008 0010A0E1 		mov	r1, r0
+  27              		.loc 1 11 0
+  28 000c 000083E5 		str	r0, [r3, #0]
+  12:../Library/timer/timer1.c **** 	T1PR=Fcclk/tFreq;			//Set up the prescaler for a 'freq' frequency
+  29              		.loc 1 12 0
+  30 0010 28009FE5 		ldr	r0, .L2+4
+  31              	.LVL1:
+  32 0014 FEFFFFEB 		bl	__udivsi3
+  33              	.LVL2:
+  34 0018 24309FE5 		ldr	r3, .L2+8
+  13:../Library/timer/timer1.c **** 	T1CTCR=0;					//Timer Mode
+  35              		.loc 1 13 0
+  36 001c 0020A0E3 		mov	r2, #0
+  12:../Library/timer/timer1.c **** 	T1PR=Fcclk/tFreq;			//Set up the prescaler for a 'freq' frequency
+  37              		.loc 1 12 0
+  38 0020 0C0083E5 		str	r0, [r3, #12]
+  39              		.loc 1 13 0
+  40 0024 702083E5 		str	r2, [r3, #112]
+  14:../Library/timer/timer1.c **** 	T1TCR |=0X01;				//Enable the clock
+  41              		.loc 1 14 0
+  42 0028 042093E5 		ldr	r2, [r3, #4]
+  43 002c 012082E3 		orr	r2, r2, #1
+  44 0030 042083E5 		str	r2, [r3, #4]
+  15:../Library/timer/timer1.c **** }
+  45              		.loc 1 15 0
+  46 0034 04E09DE4 		ldr	lr, [sp], #4
+  47 0038 1EFF2FE1 		bx	lr
+  48              	.L3:
+  49              		.align	2
+  50              	.L2:
+  51 003c 00000000 		.word	.LANCHOR0
+  52 0040 00879303 		.word	60000000
+  53 0044 008000E0 		.word	-536838144
+  54              		.cfi_endproc
+  55              	.LFE0:
+  57              		.align	2
+  58              		.global	timer1Match
+  60              	timer1Match:
+  61              	.LFB1:
+  16:../Library/timer/timer1.c **** 
+  17:../Library/timer/timer1.c **** 
+  18:../Library/timer/timer1.c **** void timer1Match(int mr, unsigned long int freq, char mode)
+  19:../Library/timer/timer1.c **** {
+  62              		.loc 1 19 0
+  63              		.cfi_startproc
+  64              		@ Function supports interworking.
+  65              		@ args = 0, pretend = 0, frame = 0
+  66              		@ frame_needed = 0, uses_anonymous_args = 0
+  67              	.LVL3:
+  20:../Library/timer/timer1.c **** 	unsigned long int mfreq = tFreq/freq;		//Get the Match Register value by dividing timer frequency 
+  68              		.loc 1 20 0
+  69 0048 70309FE5 		ldr	r3, .L12
+  19:../Library/timer/timer1.c **** {
+  70              		.loc 1 19 0
+  71 004c 30402DE9 		stmfd	sp!, {r4, r5, lr}
+  72              	.LCFI1:
+  73              		.cfi_def_cfa_offset 12
+  74              		.cfi_offset 14, -4
+  75              		.cfi_offset 5, -8
+  76              		.cfi_offset 4, -12
+  19:../Library/timer/timer1.c **** {
+  77              		.loc 1 19 0
+  78 0050 0040A0E1 		mov	r4, r0
+  79              		.loc 1 20 0
+  80 0054 000093E5 		ldr	r0, [r3, #0]
+  81              	.LVL4:
+  19:../Library/timer/timer1.c **** {
+  82              		.loc 1 19 0
+  83 0058 FF5002E2 		and	r5, r2, #255
+  84              		.loc 1 20 0
+  85 005c FEFFFFEB 		bl	__udivsi3
+  86              	.LVL5:
+  21:../Library/timer/timer1.c **** 
+  22:../Library/timer/timer1.c **** 	switch(mr)
+  87              		.loc 1 22 0
+  88 0060 030054E3 		cmp	r4, #3
+  89 0064 04F19F97 		ldrls	pc, [pc, r4, asl #2]
+  90 0068 120000EA 		b	.L4
+  91              	.L10:
+  92 006c 7C000000 		.word	.L6
+  93 0070 88000000 		.word	.L7
+  94 0074 98000000 		.word	.L8
+  95 0078 A8000000 		.word	.L9
+  96              	.L6:
+  23:../Library/timer/timer1.c **** 	{
+  24:../Library/timer/timer1.c **** 		case 0:
+  25:../Library/timer/timer1.c **** 			T1MR0 = mfreq;
+  97              		.loc 1 25 0
+  98 007c 40309FE5 		ldr	r3, .L12+4
+  99 0080 180083E5 		str	r0, [r3, #24]
+ 100 0084 0A0000EA 		b	.L11
+ 101              	.L7:
+  26:../Library/timer/timer1.c **** 			T1MCR = (mode<<0);		
+  27:../Library/timer/timer1.c **** 			break;
+  28:../Library/timer/timer1.c **** 		case 1:
+  29:../Library/timer/timer1.c **** 			T1MR1 = mfreq;
+ 102              		.loc 1 29 0
+ 103 0088 34309FE5 		ldr	r3, .L12+4
+  30:../Library/timer/timer1.c **** 			T1MCR = (mode<<3);
+ 104              		.loc 1 30 0
+ 105 008c 8551A0E1 		mov	r5, r5, asl #3
+  29:../Library/timer/timer1.c **** 			T1MR1 = mfreq;
+ 106              		.loc 1 29 0
+ 107 0090 1C0083E5 		str	r0, [r3, #28]
+ 108 0094 060000EA 		b	.L11
+ 109              	.L8:
+  31:../Library/timer/timer1.c **** 			break;
+  32:../Library/timer/timer1.c **** 		case 2:
+  33:../Library/timer/timer1.c **** 			T1MR2 = mfreq;
+ 110              		.loc 1 33 0
+ 111 0098 24309FE5 		ldr	r3, .L12+4
+  34:../Library/timer/timer1.c **** 			T1MCR = (mode<<6);
+ 112              		.loc 1 34 0
+ 113 009c 0553A0E1 		mov	r5, r5, asl #6
+  33:../Library/timer/timer1.c **** 			T1MR2 = mfreq;
+ 114              		.loc 1 33 0
+ 115 00a0 200083E5 		str	r0, [r3, #32]
+ 116 00a4 020000EA 		b	.L11
+ 117              	.L9:
+  35:../Library/timer/timer1.c **** 			break;
+  36:../Library/timer/timer1.c **** 		case 3:
+  37:../Library/timer/timer1.c **** 			T1MR3 = mfreq;
+ 118              		.loc 1 37 0
+ 119 00a8 14309FE5 		ldr	r3, .L12+4
+ 120 00ac 240083E5 		str	r0, [r3, #36]
+  38:../Library/timer/timer1.c **** 			T1MCR = (mode<<9);
+ 121              		.loc 1 38 0
+ 122 00b0 8554A0E1 		mov	r5, r5, asl #9
+ 123              	.L11:
+ 124 00b4 145083E5 		str	r5, [r3, #20]
+ 125              	.L4:
+  39:../Library/timer/timer1.c **** 			break;
+  40:../Library/timer/timer1.c **** 		default:
+  41:../Library/timer/timer1.c **** 			break;
+  42:../Library/timer/timer1.c **** 	}
+  43:../Library/timer/timer1.c **** }
+ 126              		.loc 1 43 0
+ 127 00b8 3040BDE8 		ldmfd	sp!, {r4, r5, lr}
+ 128 00bc 1EFF2FE1 		bx	lr
+ 129              	.L13:
+ 130              		.align	2
+ 131              	.L12:
+ 132 00c0 00000000 		.word	.LANCHOR0
+ 133 00c4 008000E0 		.word	-536838144
+ 134              		.cfi_endproc
+ 135              	.LFE1:
+ 137              		.align	2
+ 138              		.global	delay_us
+ 140              	delay_us:
+ 141              	.LFB3:
+  44:../Library/timer/timer1.c **** 
+  45:../Library/timer/timer1.c **** #ifdef DELAY
+  46:../Library/timer/timer1.c **** void delay_ms(int count)
+  47:../Library/timer/timer1.c **** {
+  48:../Library/timer/timer1.c **** 	for(int i=0; i<count; i++)
+  49:../Library/timer/timer1.c **** 	{
+  50:../Library/timer/timer1.c **** 		delay_us(1000);
+  51:../Library/timer/timer1.c **** 	}
+  52:../Library/timer/timer1.c **** }
+  53:../Library/timer/timer1.c **** 
+  54:../Library/timer/timer1.c **** void delay_us(int count)
+  55:../Library/timer/timer1.c **** {
+ 142              		.loc 1 55 0
+ 143              		.cfi_startproc
+ 144              		@ Function supports interworking.
+ 145              		@ args = 0, pretend = 0, frame = 0
+ 146              		@ frame_needed = 0, uses_anonymous_args = 0
+ 147              		@ link register save eliminated.
+ 148              	.LVL6:
+  56:../Library/timer/timer1.c **** 	//Fcclk should be defined as system freq. in target.h
+  57:../Library/timer/timer1.c **** 	T1MR0 = Fcclk/1000000; //Set the match register to measure 1MHz (1uS period)
+ 149              		.loc 1 57 0
+ 150 00c8 50309FE5 		ldr	r3, .L19
+ 151 00cc 3C20A0E3 		mov	r2, #60
+  55:../Library/timer/timer1.c **** {
+ 152              		.loc 1 55 0
+ 153 00d0 04402DE5 		str	r4, [sp, #-4]!
+ 154              	.LCFI2:
+ 155              		.cfi_def_cfa_offset 4
+ 156              		.cfi_offset 4, -4
+ 157              		.loc 1 57 0
+ 158 00d4 182083E5 		str	r2, [r3, #24]
+  58:../Library/timer/timer1.c **** 	T1MCR = (3<<0);	//Generate an interrupt when MR0 is matched
+ 159              		.loc 1 58 0
+ 160 00d8 0320A0E3 		mov	r2, #3
+ 161 00dc 142083E5 		str	r2, [r3, #20]
+  59:../Library/timer/timer1.c **** 	T1TCR = (1<<1);	//Reset the Timer Count
+  60:../Library/timer/timer1.c **** 	T1TCR = (1<<0);	//Start timer 1
+ 162              		.loc 1 60 0
+ 163 00e0 0110A0E3 		mov	r1, #1
+  59:../Library/timer/timer1.c **** 	T1TCR = (1<<1);	//Reset the Timer Count
+ 164              		.loc 1 59 0
+ 165 00e4 0220A0E3 		mov	r2, #2
+ 166 00e8 042083E5 		str	r2, [r3, #4]
+ 167              	.LBB2:
+  61:../Library/timer/timer1.c **** 	for(int i=0; i<count; i++)
+  62:../Library/timer/timer1.c **** 	{
+  63:../Library/timer/timer1.c **** 		while(!(T1IR & (1<<0)));	//Wait for an MR0 interrupt
+ 168              		.loc 1 63 0
+ 169 00ec 03C0A0E1 		mov	ip, r3
+ 170              	.LBE2:
+  60:../Library/timer/timer1.c **** 	T1TCR = (1<<0);	//Start timer 1
+ 171              		.loc 1 60 0
+ 172 00f0 041083E5 		str	r1, [r3, #4]
+ 173              	.LVL7:
+ 174              	.LBB3:
+  61:../Library/timer/timer1.c **** 	for(int i=0; i<count; i++)
+ 175              		.loc 1 61 0
+ 176 00f4 0020A0E3 		mov	r2, #0
+ 177 00f8 040000EA 		b	.L15
+ 178              	.LVL8:
+ 179              	.L17:
+ 180              		.loc 1 63 0 discriminator 1
+ 181 00fc 004093E5 		ldr	r4, [r3, #0]
+ 182 0100 010014E3 		tst	r4, #1
+ 183 0104 FCFFFF0A 		beq	.L17
+  64:../Library/timer/timer1.c **** 		T1IR = (1<<0);		//Reset the interrupt register
+ 184              		.loc 1 64 0
+ 185 0108 00108CE5 		str	r1, [ip, #0]
+  61:../Library/timer/timer1.c **** 	for(int i=0; i<count; i++)
+ 186              		.loc 1 61 0
+ 187 010c 012082E2 		add	r2, r2, #1
+ 188              	.LVL9:
+ 189              	.L15:
+  61:../Library/timer/timer1.c **** 	for(int i=0; i<count; i++)
+ 190              		.loc 1 61 0 is_stmt 0 discriminator 1
+ 191 0110 000052E1 		cmp	r2, r0
+ 192 0114 F8FFFFBA 		blt	.L17
+ 193              	.LBE3:
+  65:../Library/timer/timer1.c **** 		//rprintf("+");
+  66:../Library/timer/timer1.c **** 	}
+  67:../Library/timer/timer1.c **** 
+  68:../Library/timer/timer1.c **** }
+ 194              		.loc 1 68 0 is_stmt 1
+ 195 0118 1000BDE8 		ldmfd	sp!, {r4}
+ 196 011c 1EFF2FE1 		bx	lr
+ 197              	.L20:
+ 198              		.align	2
+ 199              	.L19:
+ 200 0120 008000E0 		.word	-536838144
+ 201              		.cfi_endproc
+ 202              	.LFE3:
+ 204              		.align	2
+ 205              		.global	delay_ms
+ 207              	delay_ms:
+ 208              	.LFB2:
+  47:../Library/timer/timer1.c **** {
+ 209              		.loc 1 47 0
+ 210              		.cfi_startproc
+ 211              		@ Function supports interworking.
+ 212              		@ args = 0, pretend = 0, frame = 0
+ 213              		@ frame_needed = 0, uses_anonymous_args = 0
+ 214              	.LVL10:
+ 215 0124 30402DE9 		stmfd	sp!, {r4, r5, lr}
+ 216              	.LCFI3:
+ 217              		.cfi_def_cfa_offset 12
+ 218              		.cfi_offset 14, -4
+ 219              		.cfi_offset 5, -8
+ 220              		.cfi_offset 4, -12
+  47:../Library/timer/timer1.c **** {
+ 221              		.loc 1 47 0
+ 222 0128 0050A0E1 		mov	r5, r0
+ 223              	.LBB4:
+  48:../Library/timer/timer1.c **** 	for(int i=0; i<count; i++)
+ 224              		.loc 1 48 0
+ 225 012c 0040A0E3 		mov	r4, #0
+ 226 0130 020000EA 		b	.L22
+ 227              	.LVL11:
+ 228              	.L23:
+  50:../Library/timer/timer1.c **** 		delay_us(1000);
+ 229              		.loc 1 50 0 discriminator 2
+ 230 0134 FA0FA0E3 		mov	r0, #1000
+ 231 0138 FEFFFFEB 		bl	delay_us
+  48:../Library/timer/timer1.c **** 	for(int i=0; i<count; i++)
+ 232              		.loc 1 48 0 discriminator 2
+ 233 013c 014084E2 		add	r4, r4, #1
+ 234              	.LVL12:
+ 235              	.L22:
+  48:../Library/timer/timer1.c **** 	for(int i=0; i<count; i++)
+ 236              		.loc 1 48 0 is_stmt 0 discriminator 1
+ 237 0140 050054E1 		cmp	r4, r5
+ 238 0144 FAFFFFBA 		blt	.L23
+ 239              	.LBE4:
+  52:../Library/timer/timer1.c **** }
+ 240              		.loc 1 52 0 is_stmt 1
+ 241 0148 3040BDE8 		ldmfd	sp!, {r4, r5, lr}
+ 242 014c 1EFF2FE1 		bx	lr
+ 243              		.cfi_endproc
+ 244              	.LFE2:
+ 246              		.bss
+ 247              		.align	2
+ 248              		.set	.LANCHOR0,. + 0
+ 251              	tFreq:
+ 252 0000 00000000 		.space	4
+ 253              		.text
+ 254              	.Letext0:
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 timer1.c
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cclWqVB1.s:6      .text:0000000000000000 $a
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cclWqVB1.s:9      .text:0000000000000000 timer1Init
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cclWqVB1.s:51     .text:000000000000003c $d
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cclWqVB1.s:57     .text:0000000000000048 $a
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cclWqVB1.s:60     .text:0000000000000048 timer1Match
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cclWqVB1.s:92     .text:000000000000006c $d
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cclWqVB1.s:98     .text:000000000000007c $a
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cclWqVB1.s:132    .text:00000000000000c0 $d
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cclWqVB1.s:137    .text:00000000000000c8 $a
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cclWqVB1.s:140    .text:00000000000000c8 delay_us
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cclWqVB1.s:200    .text:0000000000000120 $d
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cclWqVB1.s:204    .text:0000000000000124 $a
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cclWqVB1.s:207    .text:0000000000000124 delay_ms
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cclWqVB1.s:247    .bss:0000000000000000 $d
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cclWqVB1.s:251    .bss:0000000000000000 tFreq
+                     .debug_frame:0000000000000010 $d
+
+UNDEFINED SYMBOLS
+__udivsi3

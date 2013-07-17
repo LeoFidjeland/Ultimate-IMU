@@ -11,8 +11,9 @@
 #include "LPC214x.h"
 #include "uart1ISR.h"
 
-char uart1Message[75];
+char uart1Message[146];
 int mindex=0;
+int secondrow=0;
 char uart1MessageComplete=0;
 
 void ISR_UART1(void)
@@ -21,9 +22,14 @@ void ISR_UART1(void)
 	
 	if(val=='\r'){ 	
 		uart1Message[mindex++]='\n';
-		uart1Message[mindex++]='\0';
-		mindex=0;
-		uart1MessageComplete=1;
+		if(secondrow==1){
+			uart1Message[mindex++]='\0';
+			mindex=0;
+			secondrow=0;
+			uart1MessageComplete=1;
+		}else{
+			secondrow=1;
+		}
 	}
 	else if(uart1MessageComplete==0){
 		if(val != '\n')uart1Message[mindex++]=val;

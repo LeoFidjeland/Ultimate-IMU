@@ -1,0 +1,2777 @@
+   1              		.file	"sd_raw.c"
+   2              		.text
+   3              	.Ltext0:
+   4              		.cfi_sections	.debug_frame
+   5              		.align	2
+   7              	sd_raw_send_byte:
+   8              	.LFB3:
+   9              		.file 1 "../Library/sdfat/sd_raw.c"
+   1:../Library/sdfat/sd_raw.c **** 
+   2:../Library/sdfat/sd_raw.c **** /* This program is free software; you can redistribute it and/or modify
+   3:../Library/sdfat/sd_raw.c ****  * it under the terms of the GNU General Public License version 2 as
+   4:../Library/sdfat/sd_raw.c ****  * published by the Free Software Foundation.
+   5:../Library/sdfat/sd_raw.c ****  */
+   6:../Library/sdfat/sd_raw.c **** 
+   7:../Library/sdfat/sd_raw.c **** #include <string.h>
+   8:../Library/sdfat/sd_raw.c **** #include "sd_raw.h"
+   9:../Library/sdfat/sd_raw.c **** #include "LPC214x.h"
+  10:../Library/sdfat/sd_raw.c **** #include <stdio.h>
+  11:../Library/sdfat/sd_raw.c **** #include "rprintf.h"
+  12:../Library/sdfat/sd_raw.c **** 
+  13:../Library/sdfat/sd_raw.c **** /**
+  14:../Library/sdfat/sd_raw.c ****  * \addtogroup sd_raw MMC/SD card raw access
+  15:../Library/sdfat/sd_raw.c ****  *
+  16:../Library/sdfat/sd_raw.c ****  * This module implements read and write access to MMC and
+  17:../Library/sdfat/sd_raw.c ****  * SD cards. It serves as a low-level driver for the higher
+  18:../Library/sdfat/sd_raw.c ****  * level modules such as partition and file system access.
+  19:../Library/sdfat/sd_raw.c ****  *
+  20:../Library/sdfat/sd_raw.c ****  * @{
+  21:../Library/sdfat/sd_raw.c ****  */
+  22:../Library/sdfat/sd_raw.c **** /**
+  23:../Library/sdfat/sd_raw.c ****  * \file
+  24:../Library/sdfat/sd_raw.c ****  * MMC/SD raw access implementation.
+  25:../Library/sdfat/sd_raw.c ****  *
+  26:../Library/sdfat/sd_raw.c ****  * \author Roland Riegel
+  27:../Library/sdfat/sd_raw.c ****  */
+  28:../Library/sdfat/sd_raw.c **** 
+  29:../Library/sdfat/sd_raw.c **** /**
+  30:../Library/sdfat/sd_raw.c ****  * \addtogroup sd_raw_config MMC/SD configuration
+  31:../Library/sdfat/sd_raw.c ****  * Preprocessor defines to configure the MMC/SD support.
+  32:../Library/sdfat/sd_raw.c ****  */
+  33:../Library/sdfat/sd_raw.c **** 
+  34:../Library/sdfat/sd_raw.c **** /**
+  35:../Library/sdfat/sd_raw.c ****  * @}
+  36:../Library/sdfat/sd_raw.c ****  */
+  37:../Library/sdfat/sd_raw.c **** 
+  38:../Library/sdfat/sd_raw.c **** /* commands available in SPI mode */
+  39:../Library/sdfat/sd_raw.c **** 
+  40:../Library/sdfat/sd_raw.c **** /* CMD0: response R1 */
+  41:../Library/sdfat/sd_raw.c **** #define CMD_GO_IDLE_STATE 0x00
+  42:../Library/sdfat/sd_raw.c **** /* CMD1: response R1 */
+  43:../Library/sdfat/sd_raw.c **** #define CMD_SEND_OP_COND 0x01
+  44:../Library/sdfat/sd_raw.c **** /* CMD9: response R1 */
+  45:../Library/sdfat/sd_raw.c **** #define CMD_SEND_CSD 0x09
+  46:../Library/sdfat/sd_raw.c **** /* CMD10: response R1 */
+  47:../Library/sdfat/sd_raw.c **** #define CMD_SEND_CID 0x0a
+  48:../Library/sdfat/sd_raw.c **** /* CMD12: response R1 */
+  49:../Library/sdfat/sd_raw.c **** #define CMD_STOP_TRANSMISSION 0x0c
+  50:../Library/sdfat/sd_raw.c **** /* CMD13: response R2 */
+  51:../Library/sdfat/sd_raw.c **** #define CMD_SEND_STATUS 0x0d
+  52:../Library/sdfat/sd_raw.c **** /* CMD16: arg0[31:0]: block length, response R1 */
+  53:../Library/sdfat/sd_raw.c **** #define CMD_SET_BLOCKLEN 0x10
+  54:../Library/sdfat/sd_raw.c **** /* CMD17: arg0[31:0]: data address, response R1 */
+  55:../Library/sdfat/sd_raw.c **** #define CMD_READ_SINGLE_BLOCK 0x11
+  56:../Library/sdfat/sd_raw.c **** /* CMD18: arg0[31:0]: data address, response R1 */
+  57:../Library/sdfat/sd_raw.c **** #define CMD_READ_MULTIPLE_BLOCK 0x12
+  58:../Library/sdfat/sd_raw.c **** /* CMD24: arg0[31:0]: data address, response R1 */
+  59:../Library/sdfat/sd_raw.c **** #define CMD_WRITE_SINGLE_BLOCK 0x18
+  60:../Library/sdfat/sd_raw.c **** /* CMD25: arg0[31:0]: data address, response R1 */
+  61:../Library/sdfat/sd_raw.c **** #define CMD_WRITE_MULTIPLE_BLOCK 0x19
+  62:../Library/sdfat/sd_raw.c **** /* CMD27: response R1 */
+  63:../Library/sdfat/sd_raw.c **** #define CMD_PROGRAM_CSD 0x1b
+  64:../Library/sdfat/sd_raw.c **** /* CMD28: arg0[31:0]: data address, response R1b */
+  65:../Library/sdfat/sd_raw.c **** #define CMD_SET_WRITE_PROT 0x1c
+  66:../Library/sdfat/sd_raw.c **** /* CMD29: arg0[31:0]: data address, response R1b */
+  67:../Library/sdfat/sd_raw.c **** #define CMD_CLR_WRITE_PROT 0x1d
+  68:../Library/sdfat/sd_raw.c **** /* CMD30: arg0[31:0]: write protect data address, response R1 */
+  69:../Library/sdfat/sd_raw.c **** #define CMD_SEND_WRITE_PROT 0x1e
+  70:../Library/sdfat/sd_raw.c **** /* CMD32: arg0[31:0]: data address, response R1 */
+  71:../Library/sdfat/sd_raw.c **** #define CMD_TAG_SECTOR_START 0x20
+  72:../Library/sdfat/sd_raw.c **** /* CMD33: arg0[31:0]: data address, response R1 */
+  73:../Library/sdfat/sd_raw.c **** #define CMD_TAG_SECTOR_END 0x21
+  74:../Library/sdfat/sd_raw.c **** /* CMD34: arg0[31:0]: data address, response R1 */
+  75:../Library/sdfat/sd_raw.c **** #define CMD_UNTAG_SECTOR 0x22
+  76:../Library/sdfat/sd_raw.c **** /* CMD35: arg0[31:0]: data address, response R1 */
+  77:../Library/sdfat/sd_raw.c **** #define CMD_TAG_ERASE_GROUP_START 0x23
+  78:../Library/sdfat/sd_raw.c **** /* CMD36: arg0[31:0]: data address, response R1 */
+  79:../Library/sdfat/sd_raw.c **** #define CMD_TAG_ERASE_GROUP_END 0x24
+  80:../Library/sdfat/sd_raw.c **** /* CMD37: arg0[31:0]: data address, response R1 */
+  81:../Library/sdfat/sd_raw.c **** #define CMD_UNTAG_ERASE_GROUP 0x25
+  82:../Library/sdfat/sd_raw.c **** /* CMD38: arg0[31:0]: stuff bits, response R1b */
+  83:../Library/sdfat/sd_raw.c **** #define CMD_ERASE 0x26
+  84:../Library/sdfat/sd_raw.c **** /* CMD42: arg0[31:0]: stuff bits, response R1b */
+  85:../Library/sdfat/sd_raw.c **** #define CMD_LOCK_UNLOCK 0x2a
+  86:../Library/sdfat/sd_raw.c **** /* CMD58: response R3 */
+  87:../Library/sdfat/sd_raw.c **** #define CMD_READ_OCR 0x3a
+  88:../Library/sdfat/sd_raw.c **** /* CMD59: arg0[31:1]: stuff bits, arg0[0:0]: crc option, response R1 */
+  89:../Library/sdfat/sd_raw.c **** #define CMD_CRC_ON_OFF 0x3b
+  90:../Library/sdfat/sd_raw.c **** 
+  91:../Library/sdfat/sd_raw.c **** /* command responses */
+  92:../Library/sdfat/sd_raw.c **** /* R1: size 1 byte */
+  93:../Library/sdfat/sd_raw.c **** #define R1_IDLE_STATE 0
+  94:../Library/sdfat/sd_raw.c **** #define R1_ERASE_RESET 1
+  95:../Library/sdfat/sd_raw.c **** #define R1_ILL_COMMAND 2
+  96:../Library/sdfat/sd_raw.c **** #define R1_COM_CRC_ERR 3
+  97:../Library/sdfat/sd_raw.c **** #define R1_ERASE_SEQ_ERR 4
+  98:../Library/sdfat/sd_raw.c **** #define R1_ADDR_ERR 5
+  99:../Library/sdfat/sd_raw.c **** #define R1_PARAM_ERR 6
+ 100:../Library/sdfat/sd_raw.c **** /* R1b: equals R1, additional busy bytes */
+ 101:../Library/sdfat/sd_raw.c **** /* R2: size 2 bytes */
+ 102:../Library/sdfat/sd_raw.c **** #define R2_CARD_LOCKED 0
+ 103:../Library/sdfat/sd_raw.c **** #define R2_WP_ERASE_SKIP 1
+ 104:../Library/sdfat/sd_raw.c **** #define R2_ERR 2
+ 105:../Library/sdfat/sd_raw.c **** #define R2_CARD_ERR 3
+ 106:../Library/sdfat/sd_raw.c **** #define R2_CARD_ECC_FAIL 4
+ 107:../Library/sdfat/sd_raw.c **** #define R2_WP_VIOLATION 5
+ 108:../Library/sdfat/sd_raw.c **** #define R2_INVAL_ERASE 6
+ 109:../Library/sdfat/sd_raw.c **** #define R2_OUT_OF_RANGE 7
+ 110:../Library/sdfat/sd_raw.c **** #define R2_CSD_OVERWRITE 7
+ 111:../Library/sdfat/sd_raw.c **** #define R2_IDLE_STATE (R1_IDLE_STATE + 8)
+ 112:../Library/sdfat/sd_raw.c **** #define R2_ERASE_RESET (R1_ERASE_RESET + 8)
+ 113:../Library/sdfat/sd_raw.c **** #define R2_ILL_COMMAND (R1_ILL_COMMAND + 8)
+ 114:../Library/sdfat/sd_raw.c **** #define R2_COM_CRC_ERR (R1_COM_CRC_ERR + 8)
+ 115:../Library/sdfat/sd_raw.c **** #define R2_ERASE_SEQ_ERR (R1_ERASE_SEQ_ERR + 8)
+ 116:../Library/sdfat/sd_raw.c **** #define R2_ADDR_ERR (R1_ADDR_ERR + 8)
+ 117:../Library/sdfat/sd_raw.c **** #define R2_PARAM_ERR (R1_PARAM_ERR + 8)
+ 118:../Library/sdfat/sd_raw.c **** /* R3: size 5 bytes */
+ 119:../Library/sdfat/sd_raw.c **** #define R3_OCR_MASK (0xffffffffUL)
+ 120:../Library/sdfat/sd_raw.c **** #define R3_IDLE_STATE (R1_IDLE_STATE + 32)
+ 121:../Library/sdfat/sd_raw.c **** #define R3_ERASE_RESET (R1_ERASE_RESET + 32)
+ 122:../Library/sdfat/sd_raw.c **** #define R3_ILL_COMMAND (R1_ILL_COMMAND + 32)
+ 123:../Library/sdfat/sd_raw.c **** #define R3_COM_CRC_ERR (R1_COM_CRC_ERR + 32)
+ 124:../Library/sdfat/sd_raw.c **** #define R3_ERASE_SEQ_ERR (R1_ERASE_SEQ_ERR + 32)
+ 125:../Library/sdfat/sd_raw.c **** #define R3_ADDR_ERR (R1_ADDR_ERR + 32)
+ 126:../Library/sdfat/sd_raw.c **** #define R3_PARAM_ERR (R1_PARAM_ERR + 32)
+ 127:../Library/sdfat/sd_raw.c **** /* Data Response: size 1 byte */
+ 128:../Library/sdfat/sd_raw.c **** #define DR_STATUS_MASK 0x0e
+ 129:../Library/sdfat/sd_raw.c **** #define DR_STATUS_ACCEPTED 0x05
+ 130:../Library/sdfat/sd_raw.c **** #define DR_STATUS_CRC_ERR 0x0a
+ 131:../Library/sdfat/sd_raw.c **** #define DR_STATUS_WRITE_ERR 0x0c
+ 132:../Library/sdfat/sd_raw.c **** 
+ 133:../Library/sdfat/sd_raw.c **** #if !SD_RAW_SAVE_RAM
+ 134:../Library/sdfat/sd_raw.c ****     
+ 135:../Library/sdfat/sd_raw.c ****     /* static data buffer for acceleration */
+ 136:../Library/sdfat/sd_raw.c ****     static unsigned char raw_block[512];
+ 137:../Library/sdfat/sd_raw.c ****     /* offset where the data within raw_block lies on the card */
+ 138:../Library/sdfat/sd_raw.c ****     static unsigned int raw_block_address;
+ 139:../Library/sdfat/sd_raw.c ****     #if SD_RAW_WRITE_BUFFERING
+ 140:../Library/sdfat/sd_raw.c ****     /* flag to remember if raw_block was written to the card */
+ 141:../Library/sdfat/sd_raw.c ****     static unsigned char raw_block_written;
+ 142:../Library/sdfat/sd_raw.c **** #endif
+ 143:../Library/sdfat/sd_raw.c **** 
+ 144:../Library/sdfat/sd_raw.c **** #endif
+ 145:../Library/sdfat/sd_raw.c **** 
+ 146:../Library/sdfat/sd_raw.c **** /* private helper functions */
+ 147:../Library/sdfat/sd_raw.c **** static void sd_raw_send_byte(unsigned char b);
+ 148:../Library/sdfat/sd_raw.c **** static unsigned char sd_raw_rec_byte(void);
+ 149:../Library/sdfat/sd_raw.c **** static unsigned char sd_raw_send_command_r1(unsigned char command, unsigned int arg);
+ 150:../Library/sdfat/sd_raw.c **** //static unsigned short sd_raw_send_command_r2(unsigned char command, unsigned int arg);
+ 151:../Library/sdfat/sd_raw.c **** 
+ 152:../Library/sdfat/sd_raw.c **** /**
+ 153:../Library/sdfat/sd_raw.c ****  * \ingroup sd_raw
+ 154:../Library/sdfat/sd_raw.c ****  * Initializes memory card communication.
+ 155:../Library/sdfat/sd_raw.c ****  *
+ 156:../Library/sdfat/sd_raw.c ****  * \returns 0 on failure, 1 on success.
+ 157:../Library/sdfat/sd_raw.c ****  */
+ 158:../Library/sdfat/sd_raw.c **** unsigned char sd_raw_init()
+ 159:../Library/sdfat/sd_raw.c **** {
+ 160:../Library/sdfat/sd_raw.c ****     /* enable inputs for reading card status */
+ 161:../Library/sdfat/sd_raw.c ****     /*    configure_pin_available();*/
+ 162:../Library/sdfat/sd_raw.c ****     /*    configure_pin_locked();*/
+ 163:../Library/sdfat/sd_raw.c **** 
+ 164:../Library/sdfat/sd_raw.c ****     /* enable outputs for MOSI, SCK, SS, input for MISO */
+ 165:../Library/sdfat/sd_raw.c ****     configure_pin_ss();
+ 166:../Library/sdfat/sd_raw.c ****     configure_pin_mosi();
+ 167:../Library/sdfat/sd_raw.c ****     configure_pin_miso();
+ 168:../Library/sdfat/sd_raw.c ****     configure_pin_sck();
+ 169:../Library/sdfat/sd_raw.c **** 
+ 170:../Library/sdfat/sd_raw.c ****     unselect_card();
+ 171:../Library/sdfat/sd_raw.c **** 
+ 172:../Library/sdfat/sd_raw.c ****     /* initialize SPI with lowest frequency; max. 400kHz during identification mode of card */
+ 173:../Library/sdfat/sd_raw.c ****     S0SPCCR = 150;  /* Set frequency to 400kHz */
+ 174:../Library/sdfat/sd_raw.c ****     S0SPCR = 0x38;
+ 175:../Library/sdfat/sd_raw.c **** 
+ 176:../Library/sdfat/sd_raw.c **** 
+ 177:../Library/sdfat/sd_raw.c ****     /* initialization procedure */
+ 178:../Library/sdfat/sd_raw.c **** 
+ 179:../Library/sdfat/sd_raw.c ****     if(!sd_raw_available())
+ 180:../Library/sdfat/sd_raw.c ****     {
+ 181:../Library/sdfat/sd_raw.c ****         rprintf("SD RAW NOT AVAILABLE\n\r");
+ 182:../Library/sdfat/sd_raw.c ****         return 0;
+ 183:../Library/sdfat/sd_raw.c ****     }
+ 184:../Library/sdfat/sd_raw.c ****     configure_pin_ss();
+ 185:../Library/sdfat/sd_raw.c ****     unselect_card();
+ 186:../Library/sdfat/sd_raw.c **** 
+ 187:../Library/sdfat/sd_raw.c ****     unsigned short i;
+ 188:../Library/sdfat/sd_raw.c ****     /* card needs 74 cycles minimum to start up */
+ 189:../Library/sdfat/sd_raw.c ****     for(i = 0; i < 10; ++i)
+ 190:../Library/sdfat/sd_raw.c ****     {
+ 191:../Library/sdfat/sd_raw.c ****         /* wait 8 clock cycles */
+ 192:../Library/sdfat/sd_raw.c ****         sd_raw_rec_byte();
+ 193:../Library/sdfat/sd_raw.c ****     }
+ 194:../Library/sdfat/sd_raw.c **** 
+ 195:../Library/sdfat/sd_raw.c ****     /* address card */
+ 196:../Library/sdfat/sd_raw.c ****     select_card();
+ 197:../Library/sdfat/sd_raw.c **** 
+ 198:../Library/sdfat/sd_raw.c ****     /* reset card */
+ 199:../Library/sdfat/sd_raw.c ****     unsigned char response;
+ 200:../Library/sdfat/sd_raw.c ****     for(i = 0; ; ++i)
+ 201:../Library/sdfat/sd_raw.c ****     {
+ 202:../Library/sdfat/sd_raw.c ****         response = sd_raw_send_command_r1(CMD_GO_IDLE_STATE, 0);
+ 203:../Library/sdfat/sd_raw.c ****         if(response == (1 << R1_IDLE_STATE))
+ 204:../Library/sdfat/sd_raw.c ****             break;
+ 205:../Library/sdfat/sd_raw.c **** 
+ 206:../Library/sdfat/sd_raw.c ****         if(i == 0x1ff)
+ 207:../Library/sdfat/sd_raw.c ****         {
+ 208:../Library/sdfat/sd_raw.c ****             rprintf("\n\rresponse: %d\n\r",response);
+ 209:../Library/sdfat/sd_raw.c ****             unselect_card();
+ 210:../Library/sdfat/sd_raw.c ****             return 0;
+ 211:../Library/sdfat/sd_raw.c ****         }
+ 212:../Library/sdfat/sd_raw.c ****     }
+ 213:../Library/sdfat/sd_raw.c **** 
+ 214:../Library/sdfat/sd_raw.c ****     /* wait for card to get ready */
+ 215:../Library/sdfat/sd_raw.c ****     for(i = 0; ; ++i)
+ 216:../Library/sdfat/sd_raw.c ****     {
+ 217:../Library/sdfat/sd_raw.c ****         response = sd_raw_send_command_r1(CMD_SEND_OP_COND, 0);
+ 218:../Library/sdfat/sd_raw.c ****         if(!(response & (1 << R1_IDLE_STATE)))
+ 219:../Library/sdfat/sd_raw.c ****             break;
+ 220:../Library/sdfat/sd_raw.c **** 
+ 221:../Library/sdfat/sd_raw.c ****         if(i == 0x7fff)
+ 222:../Library/sdfat/sd_raw.c ****         {
+ 223:../Library/sdfat/sd_raw.c ****             unselect_card();
+ 224:../Library/sdfat/sd_raw.c ****             rprintf("i = 0x7fff\n\r");
+ 225:../Library/sdfat/sd_raw.c ****             return 0;
+ 226:../Library/sdfat/sd_raw.c ****         }
+ 227:../Library/sdfat/sd_raw.c ****     }
+ 228:../Library/sdfat/sd_raw.c **** 
+ 229:../Library/sdfat/sd_raw.c ****     /* set block size to 512 bytes */
+ 230:../Library/sdfat/sd_raw.c ****     if(sd_raw_send_command_r1(CMD_SET_BLOCKLEN, 512))
+ 231:../Library/sdfat/sd_raw.c ****     {
+ 232:../Library/sdfat/sd_raw.c ****         unselect_card();
+ 233:../Library/sdfat/sd_raw.c ****         rprintf("BLOCK SIZE SET ERR \n\r");
+ 234:../Library/sdfat/sd_raw.c ****         return 0;
+ 235:../Library/sdfat/sd_raw.c ****     }
+ 236:../Library/sdfat/sd_raw.c **** 
+ 237:../Library/sdfat/sd_raw.c ****     /* deaddress card */
+ 238:../Library/sdfat/sd_raw.c ****     unselect_card();
+ 239:../Library/sdfat/sd_raw.c **** 
+ 240:../Library/sdfat/sd_raw.c ****     /* switch to highest SPI frequency possible */
+ 241:../Library/sdfat/sd_raw.c ****     //S0SPCCR = 60; /* ~1MHz-- potentially can be faster */
+ 242:../Library/sdfat/sd_raw.c **** 	S0SPCCR = 6;	/* Try setting the SPI Freq. to 10 MHz */
+ 243:../Library/sdfat/sd_raw.c **** 
+ 244:../Library/sdfat/sd_raw.c ****     #if !SD_RAW_SAVE_RAM
+ 245:../Library/sdfat/sd_raw.c ****         /* the first block is likely to be accessed first, so precache it here */
+ 246:../Library/sdfat/sd_raw.c ****         raw_block_address = 0xffffffff;
+ 247:../Library/sdfat/sd_raw.c ****         #if SD_RAW_WRITE_BUFFERING
+ 248:../Library/sdfat/sd_raw.c ****         raw_block_written = 1;
+ 249:../Library/sdfat/sd_raw.c ****     #endif
+ 250:../Library/sdfat/sd_raw.c ****     if(!sd_raw_read(0, raw_block, sizeof(raw_block)))
+ 251:../Library/sdfat/sd_raw.c ****     {
+ 252:../Library/sdfat/sd_raw.c ****         rprintf("sd_raw_read borks\n\r");
+ 253:../Library/sdfat/sd_raw.c ****         return 0;
+ 254:../Library/sdfat/sd_raw.c ****     }
+ 255:../Library/sdfat/sd_raw.c ****     #endif
+ 256:../Library/sdfat/sd_raw.c **** 
+ 257:../Library/sdfat/sd_raw.c ****     return 1;
+ 258:../Library/sdfat/sd_raw.c **** }
+ 259:../Library/sdfat/sd_raw.c **** 
+ 260:../Library/sdfat/sd_raw.c **** /**
+ 261:../Library/sdfat/sd_raw.c ****  * \ingroup sd_raw
+ 262:../Library/sdfat/sd_raw.c ****  * Checks wether a memory card is located in the slot.
+ 263:../Library/sdfat/sd_raw.c ****  *
+ 264:../Library/sdfat/sd_raw.c ****  * \returns 1 if the card is available, 0 if it is not.
+ 265:../Library/sdfat/sd_raw.c ****  */
+ 266:../Library/sdfat/sd_raw.c **** unsigned char sd_raw_available()
+ 267:../Library/sdfat/sd_raw.c **** {
+ 268:../Library/sdfat/sd_raw.c ****     unsigned int i;
+ 269:../Library/sdfat/sd_raw.c ****     configure_pin_available();
+ 270:../Library/sdfat/sd_raw.c ****     for(i=0;i<100000;i++);
+ 271:../Library/sdfat/sd_raw.c ****     i = get_pin_available();
+ 272:../Library/sdfat/sd_raw.c ****     configure_pin_ss();
+ 273:../Library/sdfat/sd_raw.c ****     return i == 0x00;
+ 274:../Library/sdfat/sd_raw.c **** }
+ 275:../Library/sdfat/sd_raw.c **** 
+ 276:../Library/sdfat/sd_raw.c **** /**
+ 277:../Library/sdfat/sd_raw.c ****  * \ingroup sd_raw
+ 278:../Library/sdfat/sd_raw.c ****  * Checks wether the memory card is locked for write access.
+ 279:../Library/sdfat/sd_raw.c ****  *
+ 280:../Library/sdfat/sd_raw.c ****  * \returns 1 if the card is locked, 0 if it is not.
+ 281:../Library/sdfat/sd_raw.c ****  */
+ 282:../Library/sdfat/sd_raw.c **** unsigned char sd_raw_locked()
+ 283:../Library/sdfat/sd_raw.c **** {
+ 284:../Library/sdfat/sd_raw.c ****     return get_pin_locked() == 0x00;
+ 285:../Library/sdfat/sd_raw.c **** }
+ 286:../Library/sdfat/sd_raw.c **** 
+ 287:../Library/sdfat/sd_raw.c **** /**
+ 288:../Library/sdfat/sd_raw.c ****  * \ingroup sd_raw
+ 289:../Library/sdfat/sd_raw.c ****  * Sends a raw byte to the memory card.
+ 290:../Library/sdfat/sd_raw.c ****  *
+ 291:../Library/sdfat/sd_raw.c ****  * \param[in] b The byte to sent.
+ 292:../Library/sdfat/sd_raw.c ****  * \see sd_raw_rec_byte
+ 293:../Library/sdfat/sd_raw.c ****  */
+ 294:../Library/sdfat/sd_raw.c **** void sd_raw_send_byte(unsigned char b)
+ 295:../Library/sdfat/sd_raw.c **** {
+  10              		.loc 1 295 0
+  11              		.cfi_startproc
+  12              		@ Function supports interworking.
+  13              		@ args = 0, pretend = 0, frame = 0
+  14              		@ frame_needed = 0, uses_anonymous_args = 0
+  15              		@ link register save eliminated.
+  16              	.LVL0:
+ 296:../Library/sdfat/sd_raw.c ****     S0SPDR = b;
+  17              		.loc 1 296 0
+  18 0000 10309FE5 		ldr	r3, .L4
+  19 0004 080083E5 		str	r0, [r3, #8]
+  20              	.L2:
+ 297:../Library/sdfat/sd_raw.c ****     /* wait for byte to be shifted out */
+ 298:../Library/sdfat/sd_raw.c ****     while(!(S0SPSR & 0x80));
+  21              		.loc 1 298 0 discriminator 1
+  22 0008 042093E5 		ldr	r2, [r3, #4]
+  23 000c 800012E3 		tst	r2, #128
+  24 0010 FCFFFF0A 		beq	.L2
+ 299:../Library/sdfat/sd_raw.c **** }
+  25              		.loc 1 299 0
+  26 0014 1EFF2FE1 		bx	lr
+  27              	.L5:
+  28              		.align	2
+  29              	.L4:
+  30 0018 000002E0 		.word	-536739840
+  31              		.cfi_endproc
+  32              	.LFE3:
+  34              		.align	2
+  36              	sd_raw_rec_byte:
+  37              	.LFB4:
+ 300:../Library/sdfat/sd_raw.c **** 
+ 301:../Library/sdfat/sd_raw.c **** /**
+ 302:../Library/sdfat/sd_raw.c ****  * \ingroup sd_raw
+ 303:../Library/sdfat/sd_raw.c ****  * Receives a raw byte from the memory card.
+ 304:../Library/sdfat/sd_raw.c ****  *
+ 305:../Library/sdfat/sd_raw.c ****  * \returns The byte which should be read.
+ 306:../Library/sdfat/sd_raw.c ****  * \see sd_raw_send_byte
+ 307:../Library/sdfat/sd_raw.c ****  */
+ 308:../Library/sdfat/sd_raw.c **** unsigned char sd_raw_rec_byte(void)
+ 309:../Library/sdfat/sd_raw.c **** {
+  38              		.loc 1 309 0
+  39              		.cfi_startproc
+  40              		@ Function supports interworking.
+  41              		@ args = 0, pretend = 0, frame = 0
+  42              		@ frame_needed = 0, uses_anonymous_args = 0
+  43              		@ link register save eliminated.
+ 310:../Library/sdfat/sd_raw.c ****     /* send dummy data for receiving some */
+ 311:../Library/sdfat/sd_raw.c ****     S0SPDR = 0xff;
+  44              		.loc 1 311 0
+  45 001c 20309FE5 		ldr	r3, .L9
+  46 0020 FF20A0E3 		mov	r2, #255
+  47 0024 082083E5 		str	r2, [r3, #8]
+  48              	.L7:
+ 312:../Library/sdfat/sd_raw.c ****     while(!(S0SPSR & 0x80));
+  49              		.loc 1 312 0 discriminator 1
+  50 0028 042093E5 		ldr	r2, [r3, #4]
+  51 002c 800012E3 		tst	r2, #128
+  52 0030 FCFFFF0A 		beq	.L7
+ 313:../Library/sdfat/sd_raw.c **** 
+ 314:../Library/sdfat/sd_raw.c ****     return S0SPDR;
+  53              		.loc 1 314 0
+  54 0034 08309FE5 		ldr	r3, .L9
+  55 0038 080093E5 		ldr	r0, [r3, #8]
+  56 003c FF0000E2 		and	r0, r0, #255
+ 315:../Library/sdfat/sd_raw.c **** }
+  57              		.loc 1 315 0
+  58 0040 1EFF2FE1 		bx	lr
+  59              	.L10:
+  60              		.align	2
+  61              	.L9:
+  62 0044 000002E0 		.word	-536739840
+  63              		.cfi_endproc
+  64              	.LFE4:
+  66              		.align	2
+  68              	sd_raw_send_command_r1:
+  69              	.LFB5:
+ 316:../Library/sdfat/sd_raw.c **** 
+ 317:../Library/sdfat/sd_raw.c **** /**
+ 318:../Library/sdfat/sd_raw.c ****  * \ingroup sd_raw
+ 319:../Library/sdfat/sd_raw.c ****  * Send a command to the memory card which responses with a R1 response.
+ 320:../Library/sdfat/sd_raw.c ****  *
+ 321:../Library/sdfat/sd_raw.c ****  * \param[in] command The command to send.
+ 322:../Library/sdfat/sd_raw.c ****  * \param[in] arg The argument for command.
+ 323:../Library/sdfat/sd_raw.c ****  * \returns The command answer.
+ 324:../Library/sdfat/sd_raw.c ****  */
+ 325:../Library/sdfat/sd_raw.c **** unsigned char sd_raw_send_command_r1(unsigned char command, unsigned int arg)
+ 326:../Library/sdfat/sd_raw.c **** {
+  70              		.loc 1 326 0
+  71              		.cfi_startproc
+  72              		@ Function supports interworking.
+  73              		@ args = 0, pretend = 0, frame = 0
+  74              		@ frame_needed = 0, uses_anonymous_args = 0
+  75              	.LVL1:
+  76 0048 30402DE9 		stmfd	sp!, {r4, r5, lr}
+  77              	.LCFI0:
+  78              		.cfi_def_cfa_offset 12
+  79              		.cfi_offset 14, -4
+  80              		.cfi_offset 5, -8
+  81              		.cfi_offset 4, -12
+  82              		.loc 1 326 0
+  83 004c 0050A0E1 		mov	r5, r0
+  84 0050 0140A0E1 		mov	r4, r1
+ 327:../Library/sdfat/sd_raw.c ****     unsigned char response;
+ 328:../Library/sdfat/sd_raw.c ****     unsigned char i;
+ 329:../Library/sdfat/sd_raw.c **** 
+ 330:../Library/sdfat/sd_raw.c ****     /* wait some clock cycles */
+ 331:../Library/sdfat/sd_raw.c ****     sd_raw_rec_byte();
+  85              		.loc 1 331 0
+  86 0054 F0FFFFEB 		bl	sd_raw_rec_byte
+  87              	.LVL2:
+ 332:../Library/sdfat/sd_raw.c **** 
+ 333:../Library/sdfat/sd_raw.c ****     /* send command via SPI */
+ 334:../Library/sdfat/sd_raw.c ****     sd_raw_send_byte(0x40 | command);
+  88              		.loc 1 334 0
+  89 0058 400085E3 		orr	r0, r5, #64
+  90 005c E7FFFFEB 		bl	sd_raw_send_byte
+ 335:../Library/sdfat/sd_raw.c ****     sd_raw_send_byte((arg >> 24) & 0xff);
+  91              		.loc 1 335 0
+  92 0060 240CA0E1 		mov	r0, r4, lsr #24
+  93 0064 E5FFFFEB 		bl	sd_raw_send_byte
+ 336:../Library/sdfat/sd_raw.c ****     sd_raw_send_byte((arg >> 16) & 0xff);
+  94              		.loc 1 336 0
+  95 0068 2408A0E1 		mov	r0, r4, lsr #16
+  96 006c FF0000E2 		and	r0, r0, #255
+  97 0070 E2FFFFEB 		bl	sd_raw_send_byte
+ 337:../Library/sdfat/sd_raw.c ****     sd_raw_send_byte((arg >> 8) & 0xff);
+  98              		.loc 1 337 0
+  99 0074 2404A0E1 		mov	r0, r4, lsr #8
+ 100 0078 FF0000E2 		and	r0, r0, #255
+ 101 007c DFFFFFEB 		bl	sd_raw_send_byte
+ 338:../Library/sdfat/sd_raw.c ****     sd_raw_send_byte((arg >> 0) & 0xff);
+ 102              		.loc 1 338 0
+ 103 0080 FF0004E2 		and	r0, r4, #255
+ 104 0084 DDFFFFEB 		bl	sd_raw_send_byte
+ 339:../Library/sdfat/sd_raw.c ****     sd_raw_send_byte((command == CMD_GO_IDLE_STATE) ? 0x95 : 0xff);
+ 105              		.loc 1 339 0
+ 106 0088 000055E3 		cmp	r5, #0
+ 107 008c FF00A013 		movne	r0, #255
+ 108 0090 9500A003 		moveq	r0, #149
+ 109 0094 D9FFFFEB 		bl	sd_raw_send_byte
+ 110              	.LVL3:
+ 111 0098 0A40A0E3 		mov	r4, #10
+ 112              	.LVL4:
+ 113              	.L14:
+ 340:../Library/sdfat/sd_raw.c **** 
+ 341:../Library/sdfat/sd_raw.c ****     /* receive response */
+ 342:../Library/sdfat/sd_raw.c ****     for(i = 0; i < 10; ++i)
+ 343:../Library/sdfat/sd_raw.c ****     {
+ 344:../Library/sdfat/sd_raw.c ****         response = sd_raw_rec_byte();
+ 114              		.loc 1 344 0
+ 115 009c DEFFFFEB 		bl	sd_raw_rec_byte
+ 116              	.LVL5:
+ 345:../Library/sdfat/sd_raw.c ****         if(response != 0xff)
+ 117              		.loc 1 345 0
+ 118 00a0 FF0050E3 		cmp	r0, #255
+ 119 00a4 0200001A 		bne	.L13
+ 120              	.LVL6:
+ 121 00a8 014044E2 		sub	r4, r4, #1
+ 342:../Library/sdfat/sd_raw.c ****     for(i = 0; i < 10; ++i)
+ 122              		.loc 1 342 0
+ 123 00ac FF4014E2 		ands	r4, r4, #255
+ 124 00b0 F9FFFF1A 		bne	.L14
+ 125              	.LVL7:
+ 126              	.L13:
+ 346:../Library/sdfat/sd_raw.c ****             break;
+ 347:../Library/sdfat/sd_raw.c ****     }
+ 348:../Library/sdfat/sd_raw.c **** 
+ 349:../Library/sdfat/sd_raw.c ****     return response;
+ 350:../Library/sdfat/sd_raw.c **** }
+ 127              		.loc 1 350 0
+ 128 00b4 3040BDE8 		ldmfd	sp!, {r4, r5, lr}
+ 129 00b8 1EFF2FE1 		bx	lr
+ 130              		.cfi_endproc
+ 131              	.LFE5:
+ 133              		.align	2
+ 134              		.global	sd_raw_available
+ 136              	sd_raw_available:
+ 137              	.LFB1:
+ 267:../Library/sdfat/sd_raw.c **** {
+ 138              		.loc 1 267 0
+ 139              		.cfi_startproc
+ 140              		@ Function supports interworking.
+ 141              		@ args = 0, pretend = 0, frame = 0
+ 142              		@ frame_needed = 0, uses_anonymous_args = 0
+ 143              		@ link register save eliminated.
+ 269:../Library/sdfat/sd_raw.c ****     configure_pin_available();
+ 144              		.loc 1 269 0
+ 145 00bc 28309FE5 		ldr	r3, .L18
+ 146 00c0 082093E5 		ldr	r2, [r3, #8]
+ 147 00c4 8020C2E3 		bic	r2, r2, #128
+ 148 00c8 082083E5 		str	r2, [r3, #8]
+ 149              	.LVL8:
+ 271:../Library/sdfat/sd_raw.c ****     i = get_pin_available();
+ 150              		.loc 1 271 0
+ 151 00cc 000093E5 		ldr	r0, [r3, #0]
+ 152              	.LVL9:
+ 272:../Library/sdfat/sd_raw.c ****     configure_pin_ss();
+ 153              		.loc 1 272 0
+ 154 00d0 082093E5 		ldr	r2, [r3, #8]
+ 271:../Library/sdfat/sd_raw.c ****     i = get_pin_available();
+ 155              		.loc 1 271 0
+ 156 00d4 800000E2 		and	r0, r0, #128
+ 157              	.LVL10:
+ 272:../Library/sdfat/sd_raw.c ****     configure_pin_ss();
+ 158              		.loc 1 272 0
+ 159 00d8 802082E3 		orr	r2, r2, #128
+ 274:../Library/sdfat/sd_raw.c **** }
+ 160              		.loc 1 274 0
+ 161 00dc 000090E2 		adds	r0, r0, #0
+ 272:../Library/sdfat/sd_raw.c ****     configure_pin_ss();
+ 162              		.loc 1 272 0
+ 163 00e0 082083E5 		str	r2, [r3, #8]
+ 274:../Library/sdfat/sd_raw.c **** }
+ 164              		.loc 1 274 0
+ 165 00e4 0100A013 		movne	r0, #1
+ 166 00e8 1EFF2FE1 		bx	lr
+ 167              	.L19:
+ 168              		.align	2
+ 169              	.L18:
+ 170 00ec 008002E0 		.word	-536707072
+ 171              		.cfi_endproc
+ 172              	.LFE1:
+ 174              		.align	2
+ 175              		.global	sd_raw_locked
+ 177              	sd_raw_locked:
+ 178              	.LFB2:
+ 283:../Library/sdfat/sd_raw.c **** {
+ 179              		.loc 1 283 0
+ 180              		.cfi_startproc
+ 181              		@ Function supports interworking.
+ 182              		@ args = 0, pretend = 0, frame = 0
+ 183              		@ frame_needed = 0, uses_anonymous_args = 0
+ 184              		@ link register save eliminated.
+ 285:../Library/sdfat/sd_raw.c **** }
+ 185              		.loc 1 285 0
+ 186 00f0 0100A0E3 		mov	r0, #1
+ 187 00f4 1EFF2FE1 		bx	lr
+ 188              		.cfi_endproc
+ 189              	.LFE2:
+ 191              		.align	2
+ 192              		.global	sd_raw_write
+ 194              	sd_raw_write:
+ 195              	.LFB8:
+ 351:../Library/sdfat/sd_raw.c **** 
+ 352:../Library/sdfat/sd_raw.c **** /**
+ 353:../Library/sdfat/sd_raw.c ****  * \ingroup sd_raw
+ 354:../Library/sdfat/sd_raw.c ****  * Send a command to the memory card which responses with a R2 response.
+ 355:../Library/sdfat/sd_raw.c ****  *
+ 356:../Library/sdfat/sd_raw.c ****  * \param[in] command The command to send.
+ 357:../Library/sdfat/sd_raw.c ****  * \param[in] arg The argument for command.
+ 358:../Library/sdfat/sd_raw.c ****  * \returns The command answer.
+ 359:../Library/sdfat/sd_raw.c ****  */
+ 360:../Library/sdfat/sd_raw.c **** /*
+ 361:../Library/sdfat/sd_raw.c **** unsigned short sd_raw_send_command_r2(unsigned char command, unsigned int arg)
+ 362:../Library/sdfat/sd_raw.c **** {
+ 363:../Library/sdfat/sd_raw.c ****     unsigned short response;
+ 364:../Library/sdfat/sd_raw.c ****     unsigned char i;
+ 365:../Library/sdfat/sd_raw.c **** 
+ 366:../Library/sdfat/sd_raw.c ****     // wait some clock cycles
+ 367:../Library/sdfat/sd_raw.c ****     sd_raw_rec_byte();
+ 368:../Library/sdfat/sd_raw.c **** 
+ 369:../Library/sdfat/sd_raw.c ****     // send command via SPI
+ 370:../Library/sdfat/sd_raw.c ****     sd_raw_send_byte(0x40 | command);
+ 371:../Library/sdfat/sd_raw.c ****     sd_raw_send_byte((arg >> 24) & 0xff);
+ 372:../Library/sdfat/sd_raw.c ****     sd_raw_send_byte((arg >> 16) & 0xff);
+ 373:../Library/sdfat/sd_raw.c ****     sd_raw_send_byte((arg >> 8) & 0xff);
+ 374:../Library/sdfat/sd_raw.c ****     sd_raw_send_byte((arg >> 0) & 0xff);
+ 375:../Library/sdfat/sd_raw.c ****     sd_raw_send_byte(command == CMD_GO_IDLE_STATE ? 0x95 : 0xff);
+ 376:../Library/sdfat/sd_raw.c **** 
+ 377:../Library/sdfat/sd_raw.c ****     // receive response
+ 378:../Library/sdfat/sd_raw.c ****     for(i = 0; i < 10; ++i)
+ 379:../Library/sdfat/sd_raw.c ****     {
+ 380:../Library/sdfat/sd_raw.c ****         response = sd_raw_rec_byte();
+ 381:../Library/sdfat/sd_raw.c ****         if(response != 0xff)
+ 382:../Library/sdfat/sd_raw.c ****             break;
+ 383:../Library/sdfat/sd_raw.c ****     }
+ 384:../Library/sdfat/sd_raw.c ****     response <<= 8;
+ 385:../Library/sdfat/sd_raw.c ****     response |= sd_raw_rec_byte();
+ 386:../Library/sdfat/sd_raw.c **** 
+ 387:../Library/sdfat/sd_raw.c ****     return response;
+ 388:../Library/sdfat/sd_raw.c **** }
+ 389:../Library/sdfat/sd_raw.c **** */
+ 390:../Library/sdfat/sd_raw.c **** 
+ 391:../Library/sdfat/sd_raw.c **** /**
+ 392:../Library/sdfat/sd_raw.c ****  * \ingroup sd_raw
+ 393:../Library/sdfat/sd_raw.c ****  * Reads raw data from the card.
+ 394:../Library/sdfat/sd_raw.c ****  *
+ 395:../Library/sdfat/sd_raw.c ****  * \param[in] offset The offset from which to read.
+ 396:../Library/sdfat/sd_raw.c ****  * \param[out] buffer The buffer into which to write the data.
+ 397:../Library/sdfat/sd_raw.c ****  * \param[in] length The number of bytes to read.
+ 398:../Library/sdfat/sd_raw.c ****  * \returns 0 on failure, 1 on success.
+ 399:../Library/sdfat/sd_raw.c ****  * \see sd_raw_read_interval, sd_raw_write
+ 400:../Library/sdfat/sd_raw.c ****  */
+ 401:../Library/sdfat/sd_raw.c **** unsigned char sd_raw_read(unsigned int offset, unsigned char* buffer, unsigned short length)
+ 402:../Library/sdfat/sd_raw.c **** {
+ 403:../Library/sdfat/sd_raw.c ****     unsigned int block_address;
+ 404:../Library/sdfat/sd_raw.c ****     unsigned short block_offset;
+ 405:../Library/sdfat/sd_raw.c ****     unsigned short read_length;
+ 406:../Library/sdfat/sd_raw.c ****     while(length > 0)
+ 407:../Library/sdfat/sd_raw.c ****     {
+ 408:../Library/sdfat/sd_raw.c ****         /* determine byte count to read at once */
+ 409:../Library/sdfat/sd_raw.c ****         block_address = offset & 0xfffffe00;
+ 410:../Library/sdfat/sd_raw.c ****         block_offset = offset & 0x01ff;
+ 411:../Library/sdfat/sd_raw.c ****         read_length = 512 - block_offset; /* read up to block border */
+ 412:../Library/sdfat/sd_raw.c ****         if(read_length > length)
+ 413:../Library/sdfat/sd_raw.c ****             read_length = length;
+ 414:../Library/sdfat/sd_raw.c **** 
+ 415:../Library/sdfat/sd_raw.c ****         #if !SD_RAW_SAVE_RAM
+ 416:../Library/sdfat/sd_raw.c ****             /* check if the requested data is cached */
+ 417:../Library/sdfat/sd_raw.c ****             if(block_address != raw_block_address)
+ 418:../Library/sdfat/sd_raw.c ****             #endif
+ 419:../Library/sdfat/sd_raw.c ****         {
+ 420:../Library/sdfat/sd_raw.c ****             #if SD_RAW_WRITE_BUFFERING
+ 421:../Library/sdfat/sd_raw.c ****                 if(!raw_block_written)
+ 422:../Library/sdfat/sd_raw.c ****                 {
+ 423:../Library/sdfat/sd_raw.c ****                     if(!sd_raw_write(raw_block_address, raw_block, sizeof(raw_block)))
+ 424:../Library/sdfat/sd_raw.c ****                         return 0;
+ 425:../Library/sdfat/sd_raw.c ****                 }
+ 426:../Library/sdfat/sd_raw.c ****             #endif
+ 427:../Library/sdfat/sd_raw.c **** 
+ 428:../Library/sdfat/sd_raw.c ****             /* address card */
+ 429:../Library/sdfat/sd_raw.c ****             select_card();
+ 430:../Library/sdfat/sd_raw.c **** 
+ 431:../Library/sdfat/sd_raw.c ****             /* send single block request */
+ 432:../Library/sdfat/sd_raw.c ****             if(sd_raw_send_command_r1(CMD_READ_SINGLE_BLOCK, block_address))
+ 433:../Library/sdfat/sd_raw.c ****             {
+ 434:../Library/sdfat/sd_raw.c ****                 unselect_card();
+ 435:../Library/sdfat/sd_raw.c ****                 return 0;
+ 436:../Library/sdfat/sd_raw.c ****             }
+ 437:../Library/sdfat/sd_raw.c **** 
+ 438:../Library/sdfat/sd_raw.c ****             /* wait for data block (start byte 0xfe) */
+ 439:../Library/sdfat/sd_raw.c ****             while(sd_raw_rec_byte() != 0xfe);
+ 440:../Library/sdfat/sd_raw.c **** 
+ 441:../Library/sdfat/sd_raw.c ****             #if SD_RAW_SAVE_RAM
+ 442:../Library/sdfat/sd_raw.c ****                 /* read byte block */
+ 443:../Library/sdfat/sd_raw.c ****                 unsigned short read_to = block_offset + read_length;
+ 444:../Library/sdfat/sd_raw.c ****                 for(unsigned short i = 0; i < 512; ++i)
+ 445:../Library/sdfat/sd_raw.c ****                 {
+ 446:../Library/sdfat/sd_raw.c ****                     unsigned char b = sd_raw_rec_byte();
+ 447:../Library/sdfat/sd_raw.c ****                     if(i >= block_offset && i < read_to)
+ 448:../Library/sdfat/sd_raw.c ****                         *buffer++ = b;
+ 449:../Library/sdfat/sd_raw.c ****                 }
+ 450:../Library/sdfat/sd_raw.c ****             #else
+ 451:../Library/sdfat/sd_raw.c ****                 /* read byte block */
+ 452:../Library/sdfat/sd_raw.c ****                 unsigned char* cache = raw_block;
+ 453:../Library/sdfat/sd_raw.c ****                 unsigned short i;
+ 454:../Library/sdfat/sd_raw.c ****                 for(i = 0; i < 512; ++i)
+ 455:../Library/sdfat/sd_raw.c ****                     *cache++ = sd_raw_rec_byte();
+ 456:../Library/sdfat/sd_raw.c ****                 raw_block_address = block_address;
+ 457:../Library/sdfat/sd_raw.c ****     
+ 458:../Library/sdfat/sd_raw.c ****                 memcpy(buffer, raw_block + block_offset, read_length);
+ 459:../Library/sdfat/sd_raw.c ****                 buffer += read_length;
+ 460:../Library/sdfat/sd_raw.c ****             #endif
+ 461:../Library/sdfat/sd_raw.c **** 
+ 462:../Library/sdfat/sd_raw.c ****             /* read crc16 */
+ 463:../Library/sdfat/sd_raw.c ****             sd_raw_rec_byte();
+ 464:../Library/sdfat/sd_raw.c ****             sd_raw_rec_byte();
+ 465:../Library/sdfat/sd_raw.c **** 
+ 466:../Library/sdfat/sd_raw.c ****             /* deaddress card */
+ 467:../Library/sdfat/sd_raw.c ****             unselect_card();
+ 468:../Library/sdfat/sd_raw.c **** 
+ 469:../Library/sdfat/sd_raw.c ****             /* let card some time to finish */
+ 470:../Library/sdfat/sd_raw.c ****             sd_raw_rec_byte();
+ 471:../Library/sdfat/sd_raw.c ****         }
+ 472:../Library/sdfat/sd_raw.c ****         #if !SD_RAW_SAVE_RAM
+ 473:../Library/sdfat/sd_raw.c ****             else
+ 474:../Library/sdfat/sd_raw.c ****             {
+ 475:../Library/sdfat/sd_raw.c ****                 /* use cached data */
+ 476:../Library/sdfat/sd_raw.c ****                 memcpy(buffer, raw_block + block_offset, read_length);
+ 477:../Library/sdfat/sd_raw.c ****             }
+ 478:../Library/sdfat/sd_raw.c ****         #endif
+ 479:../Library/sdfat/sd_raw.c **** 
+ 480:../Library/sdfat/sd_raw.c ****         length -= read_length;
+ 481:../Library/sdfat/sd_raw.c ****         offset += read_length;
+ 482:../Library/sdfat/sd_raw.c ****     }
+ 483:../Library/sdfat/sd_raw.c **** 
+ 484:../Library/sdfat/sd_raw.c ****     return 1;
+ 485:../Library/sdfat/sd_raw.c **** }
+ 486:../Library/sdfat/sd_raw.c **** 
+ 487:../Library/sdfat/sd_raw.c **** /**
+ 488:../Library/sdfat/sd_raw.c ****  * \ingroup sd_raw
+ 489:../Library/sdfat/sd_raw.c ****  * Continuously reads units of \c interval bytes and calls a callback function.
+ 490:../Library/sdfat/sd_raw.c ****  *
+ 491:../Library/sdfat/sd_raw.c ****  * This function starts reading at the specified offset. Every \c interval bytes,
+ 492:../Library/sdfat/sd_raw.c ****  * it calls the callback function with the associated data buffer.
+ 493:../Library/sdfat/sd_raw.c ****  *
+ 494:../Library/sdfat/sd_raw.c ****  * By returning zero, the callback may stop reading.
+ 495:../Library/sdfat/sd_raw.c ****  *
+ 496:../Library/sdfat/sd_raw.c ****  * \note Within the callback function, you can not start another read or
+ 497:../Library/sdfat/sd_raw.c ****  *       write operation.
+ 498:../Library/sdfat/sd_raw.c ****  * \note This function only works if the following conditions are met:
+ 499:../Library/sdfat/sd_raw.c ****  *       - (offset - (offset % 512)) % interval == 0
+ 500:../Library/sdfat/sd_raw.c ****  *       - length % interval == 0
+ 501:../Library/sdfat/sd_raw.c ****  *
+ 502:../Library/sdfat/sd_raw.c ****  * \param[in] offset Offset from which to start reading.
+ 503:../Library/sdfat/sd_raw.c ****  * \param[in] buffer Pointer to a buffer which is at least interval bytes in size.
+ 504:../Library/sdfat/sd_raw.c ****  * \param[in] interval Number of bytes to read before calling the callback function.
+ 505:../Library/sdfat/sd_raw.c ****  * \param[in] length Number of bytes to read altogether.
+ 506:../Library/sdfat/sd_raw.c ****  * \param[in] callback The function to call every interval bytes.
+ 507:../Library/sdfat/sd_raw.c ****  * \param[in] p An opaque pointer directly passed to the callback function.
+ 508:../Library/sdfat/sd_raw.c ****  * \returns 0 on failure, 1 on success
+ 509:../Library/sdfat/sd_raw.c ****  * \see sd_raw_read, sd_raw_write
+ 510:../Library/sdfat/sd_raw.c ****  */
+ 511:../Library/sdfat/sd_raw.c **** unsigned char sd_raw_read_interval(unsigned int offset, unsigned char* buffer, unsigned short inter
+ 512:../Library/sdfat/sd_raw.c **** {
+ 513:../Library/sdfat/sd_raw.c ****     if(!buffer || interval == 0 || length < interval || !callback)
+ 514:../Library/sdfat/sd_raw.c ****         return 0;
+ 515:../Library/sdfat/sd_raw.c **** 
+ 516:../Library/sdfat/sd_raw.c ****     #if !SD_RAW_SAVE_RAM
+ 517:../Library/sdfat/sd_raw.c ****         while(length >= interval)
+ 518:../Library/sdfat/sd_raw.c ****         {
+ 519:../Library/sdfat/sd_raw.c ****             /* as reading is now buffered, we directly
+ 520:../Library/sdfat/sd_raw.c ****                      * hand over the request to sd_raw_read()
+ 521:../Library/sdfat/sd_raw.c ****                      */
+ 522:../Library/sdfat/sd_raw.c ****             if(!sd_raw_read(offset, buffer, interval))
+ 523:../Library/sdfat/sd_raw.c ****                 return 0;
+ 524:../Library/sdfat/sd_raw.c ****             if(!callback(buffer, offset, p))
+ 525:../Library/sdfat/sd_raw.c ****                 break;
+ 526:../Library/sdfat/sd_raw.c ****             offset += interval;
+ 527:../Library/sdfat/sd_raw.c ****             length -= interval;
+ 528:../Library/sdfat/sd_raw.c ****         }
+ 529:../Library/sdfat/sd_raw.c ****     
+ 530:../Library/sdfat/sd_raw.c ****         return 1;
+ 531:../Library/sdfat/sd_raw.c ****     #else
+ 532:../Library/sdfat/sd_raw.c ****         /* address card */
+ 533:../Library/sdfat/sd_raw.c ****         select_card();
+ 534:../Library/sdfat/sd_raw.c ****     
+ 535:../Library/sdfat/sd_raw.c ****         unsigned short block_offset;
+ 536:../Library/sdfat/sd_raw.c ****         unsigned short read_length;
+ 537:../Library/sdfat/sd_raw.c ****         unsigned char* buffer_cur;
+ 538:../Library/sdfat/sd_raw.c ****         unsigned char finished = 0;
+ 539:../Library/sdfat/sd_raw.c ****         do
+ 540:../Library/sdfat/sd_raw.c ****         {
+ 541:../Library/sdfat/sd_raw.c ****             /* determine byte count to read at once */
+ 542:../Library/sdfat/sd_raw.c ****             block_offset = offset & 0x01ff;
+ 543:../Library/sdfat/sd_raw.c ****             read_length = 512 - block_offset;
+ 544:../Library/sdfat/sd_raw.c ****     
+ 545:../Library/sdfat/sd_raw.c ****             /* send single block request */
+ 546:../Library/sdfat/sd_raw.c ****             if(sd_raw_send_command_r1(CMD_READ_SINGLE_BLOCK, offset & 0xfffffe00))
+ 547:../Library/sdfat/sd_raw.c ****             {
+ 548:../Library/sdfat/sd_raw.c ****                 unselect_card();
+ 549:../Library/sdfat/sd_raw.c ****                 return 0;
+ 550:../Library/sdfat/sd_raw.c ****             }
+ 551:../Library/sdfat/sd_raw.c ****     
+ 552:../Library/sdfat/sd_raw.c ****             /* wait for data block (start byte 0xfe) */
+ 553:../Library/sdfat/sd_raw.c ****             while(sd_raw_rec_byte() != 0xfe);
+ 554:../Library/sdfat/sd_raw.c ****             unsigned short i;
+ 555:../Library/sdfat/sd_raw.c ****             /* read up to the data of interest */
+ 556:../Library/sdfat/sd_raw.c ****             for(i = 0; i < block_offset; ++i)
+ 557:../Library/sdfat/sd_raw.c ****                 sd_raw_rec_byte();
+ 558:../Library/sdfat/sd_raw.c ****     
+ 559:../Library/sdfat/sd_raw.c ****             /* read interval bytes of data and execute the callback */
+ 560:../Library/sdfat/sd_raw.c ****             do
+ 561:../Library/sdfat/sd_raw.c ****             {
+ 562:../Library/sdfat/sd_raw.c ****                 if(read_length < interval || length < interval)
+ 563:../Library/sdfat/sd_raw.c ****                     break;
+ 564:../Library/sdfat/sd_raw.c ****     
+ 565:../Library/sdfat/sd_raw.c ****                 buffer_cur = buffer;
+ 566:../Library/sdfat/sd_raw.c ****                 for(i = 0; i < interval; ++i)
+ 567:../Library/sdfat/sd_raw.c ****                     *buffer_cur++ = sd_raw_rec_byte();
+ 568:../Library/sdfat/sd_raw.c ****     
+ 569:../Library/sdfat/sd_raw.c ****                 if(!callback(buffer, offset + (512 - read_length), p))
+ 570:../Library/sdfat/sd_raw.c ****                 {
+ 571:../Library/sdfat/sd_raw.c ****                     finished = 1;
+ 572:../Library/sdfat/sd_raw.c ****                     break;
+ 573:../Library/sdfat/sd_raw.c ****                 }
+ 574:../Library/sdfat/sd_raw.c ****     
+ 575:../Library/sdfat/sd_raw.c ****                 read_length -= interval;
+ 576:../Library/sdfat/sd_raw.c ****                 length -= interval;
+ 577:../Library/sdfat/sd_raw.c ****     
+ 578:../Library/sdfat/sd_raw.c ****             }
+ 579:../Library/sdfat/sd_raw.c ****             while(read_length > 0 && length > 0);
+ 580:../Library/sdfat/sd_raw.c ****     
+ 581:../Library/sdfat/sd_raw.c ****             /* read rest of data block */
+ 582:../Library/sdfat/sd_raw.c ****             while(read_length-- > 0)
+ 583:../Library/sdfat/sd_raw.c ****                 sd_raw_rec_byte();
+ 584:../Library/sdfat/sd_raw.c ****     
+ 585:../Library/sdfat/sd_raw.c ****             /* read crc16 */
+ 586:../Library/sdfat/sd_raw.c ****             sd_raw_rec_byte();
+ 587:../Library/sdfat/sd_raw.c ****             sd_raw_rec_byte();
+ 588:../Library/sdfat/sd_raw.c ****     
+ 589:../Library/sdfat/sd_raw.c ****             if(length < interval)
+ 590:../Library/sdfat/sd_raw.c ****                 break;
+ 591:../Library/sdfat/sd_raw.c ****     
+ 592:../Library/sdfat/sd_raw.c ****             offset = (offset & 0xfffffe00) + 512;
+ 593:../Library/sdfat/sd_raw.c ****     
+ 594:../Library/sdfat/sd_raw.c ****         }
+ 595:../Library/sdfat/sd_raw.c ****         while(!finished);
+ 596:../Library/sdfat/sd_raw.c ****     
+ 597:../Library/sdfat/sd_raw.c ****         /* deaddress card */
+ 598:../Library/sdfat/sd_raw.c ****         unselect_card();
+ 599:../Library/sdfat/sd_raw.c ****     
+ 600:../Library/sdfat/sd_raw.c ****         /* let card some time to finish */
+ 601:../Library/sdfat/sd_raw.c ****         sd_raw_rec_byte();
+ 602:../Library/sdfat/sd_raw.c ****     
+ 603:../Library/sdfat/sd_raw.c ****         return 1;
+ 604:../Library/sdfat/sd_raw.c ****     #endif
+ 605:../Library/sdfat/sd_raw.c **** }
+ 606:../Library/sdfat/sd_raw.c **** 
+ 607:../Library/sdfat/sd_raw.c **** /**
+ 608:../Library/sdfat/sd_raw.c ****  * \ingroup sd_raw
+ 609:../Library/sdfat/sd_raw.c ****  * Writes raw data to the card.
+ 610:../Library/sdfat/sd_raw.c ****  *
+ 611:../Library/sdfat/sd_raw.c ****  * \note If write buffering is enabled, you might have to
+ 612:../Library/sdfat/sd_raw.c ****  *       call sd_raw_sync() before disconnecting the card
+ 613:../Library/sdfat/sd_raw.c ****  *       to ensure all remaining data has been written.
+ 614:../Library/sdfat/sd_raw.c ****  *
+ 615:../Library/sdfat/sd_raw.c ****  * \param[in] offset The offset where to start writing.
+ 616:../Library/sdfat/sd_raw.c ****  * \param[in] buffer The buffer containing the data to be written.
+ 617:../Library/sdfat/sd_raw.c ****  * \param[in] length The number of bytes to write.
+ 618:../Library/sdfat/sd_raw.c ****  * \returns 0 on failure, 1 on success.
+ 619:../Library/sdfat/sd_raw.c ****  * \see sd_raw_read
+ 620:../Library/sdfat/sd_raw.c ****  */
+ 621:../Library/sdfat/sd_raw.c **** unsigned char sd_raw_write(unsigned int offset, const unsigned char* buffer, unsigned short length)
+ 622:../Library/sdfat/sd_raw.c **** {
+ 196              		.loc 1 622 0
+ 197              		.cfi_startproc
+ 198              		@ Function supports interworking.
+ 199              		@ args = 0, pretend = 0, frame = 0
+ 200              		@ frame_needed = 0, uses_anonymous_args = 0
+ 201              	.LVL11:
+ 202 00f8 F04F2DE9 		stmfd	sp!, {r4, r5, r6, r7, r8, r9, sl, fp, lr}
+ 203              	.LCFI1:
+ 204              		.cfi_def_cfa_offset 36
+ 205              		.cfi_offset 14, -4
+ 206              		.cfi_offset 11, -8
+ 207              		.cfi_offset 10, -12
+ 208              		.cfi_offset 9, -16
+ 209              		.cfi_offset 8, -20
+ 210              		.cfi_offset 7, -24
+ 211              		.cfi_offset 6, -28
+ 212              		.cfi_offset 5, -32
+ 213              		.cfi_offset 4, -36
+ 214              	.LBB2:
+ 623:../Library/sdfat/sd_raw.c ****     #if SD_RAW_WRITE_SUPPORT
+ 624:../Library/sdfat/sd_raw.c ****     
+ 625:../Library/sdfat/sd_raw.c ****         if(get_pin_locked())
+ 626:../Library/sdfat/sd_raw.c ****             return 0;
+ 627:../Library/sdfat/sd_raw.c ****     
+ 628:../Library/sdfat/sd_raw.c ****         unsigned int block_address;
+ 629:../Library/sdfat/sd_raw.c ****         unsigned short block_offset;
+ 630:../Library/sdfat/sd_raw.c ****         unsigned short write_length;
+ 631:../Library/sdfat/sd_raw.c ****         while(length > 0)
+ 632:../Library/sdfat/sd_raw.c ****         {
+ 633:../Library/sdfat/sd_raw.c ****             /* determine byte count to write at once */
+ 634:../Library/sdfat/sd_raw.c ****             block_address = offset & 0xfffffe00;
+ 635:../Library/sdfat/sd_raw.c ****             block_offset = offset & 0x01ff;
+ 636:../Library/sdfat/sd_raw.c ****             write_length = 512 - block_offset; /* write up to block border */
+ 637:../Library/sdfat/sd_raw.c ****             if(write_length > length)
+ 638:../Library/sdfat/sd_raw.c ****                 write_length = length;
+ 639:../Library/sdfat/sd_raw.c ****     
+ 640:../Library/sdfat/sd_raw.c ****             /* Merge the data to write with the content of the block.
+ 641:../Library/sdfat/sd_raw.c ****                      * Use the cached block if available.
+ 642:../Library/sdfat/sd_raw.c ****                      */
+ 643:../Library/sdfat/sd_raw.c ****             if(block_address != raw_block_address)
+ 215              		.loc 1 643 0
+ 216 00fc 78419FE5 		ldr	r4, .L37
+ 217              	.LBE2:
+ 622:../Library/sdfat/sd_raw.c **** {
+ 218              		.loc 1 622 0
+ 219 0100 0228A0E1 		mov	r2, r2, asl #16
+ 220              	.LVL12:
+ 221 0104 00A0A0E1 		mov	sl, r0
+ 222 0108 0180A0E1 		mov	r8, r1
+ 223 010c 2278A0E1 		mov	r7, r2, lsr #16
+ 224              	.LBB3:
+ 644:../Library/sdfat/sd_raw.c ****             {
+ 645:../Library/sdfat/sd_raw.c ****                 #if SD_RAW_WRITE_BUFFERING
+ 646:../Library/sdfat/sd_raw.c ****                 if(!raw_block_written)
+ 647:../Library/sdfat/sd_raw.c ****                 {
+ 648:../Library/sdfat/sd_raw.c ****                     if(!sd_raw_write(raw_block_address, raw_block, sizeof(raw_block)))
+ 649:../Library/sdfat/sd_raw.c ****                         return 0;
+ 650:../Library/sdfat/sd_raw.c ****                 }
+ 651:../Library/sdfat/sd_raw.c **** 				#endif
+ 652:../Library/sdfat/sd_raw.c **** 
+ 653:../Library/sdfat/sd_raw.c ****             if(block_offset || write_length < 512)
+ 654:../Library/sdfat/sd_raw.c ****             {
+ 655:../Library/sdfat/sd_raw.c ****                 if(!sd_raw_read(block_address, raw_block, sizeof(raw_block)))
+ 656:../Library/sdfat/sd_raw.c ****                     return 0;
+ 657:../Library/sdfat/sd_raw.c ****             }
+ 658:../Library/sdfat/sd_raw.c ****             raw_block_address = block_address;
+ 659:../Library/sdfat/sd_raw.c ****         }
+ 660:../Library/sdfat/sd_raw.c **** 
+ 661:../Library/sdfat/sd_raw.c ****         if(buffer != raw_block)
+ 225              		.loc 1 661 0
+ 226 0110 05B084E2 		add	fp, r4, #5
+ 227              	.LBE3:
+ 631:../Library/sdfat/sd_raw.c ****         while(length > 0)
+ 228              		.loc 1 631 0
+ 229 0114 530000EA 		b	.L22
+ 230              	.LVL13:
+ 231              	.L31:
+ 232              	.LBB4:
+ 635:../Library/sdfat/sd_raw.c ****             block_offset = offset & 0x01ff;
+ 233              		.loc 1 635 0
+ 234 0118 8A9BA0E1 		mov	r9, sl, asl #23
+ 235 011c A99BA0E1 		mov	r9, r9, lsr #23
+ 636:../Library/sdfat/sd_raw.c ****             write_length = 512 - block_offset; /* write up to block border */
+ 236              		.loc 1 636 0
+ 237 0120 025C69E2 		rsb	r5, r9, #512
+ 634:../Library/sdfat/sd_raw.c ****             block_address = offset & 0xfffffe00;
+ 238              		.loc 1 634 0
+ 239 0124 7F6FCAE3 		bic	r6, sl, #508
+ 636:../Library/sdfat/sd_raw.c ****             write_length = 512 - block_offset; /* write up to block border */
+ 240              		.loc 1 636 0
+ 241 0128 0558A0E1 		mov	r5, r5, asl #16
+ 643:../Library/sdfat/sd_raw.c ****             if(block_address != raw_block_address)
+ 242              		.loc 1 643 0
+ 243 012c 000094E5 		ldr	r0, [r4, #0]
+ 634:../Library/sdfat/sd_raw.c ****             block_address = offset & 0xfffffe00;
+ 244              		.loc 1 634 0
+ 245 0130 0360C6E3 		bic	r6, r6, #3
+ 246              	.LVL14:
+ 636:../Library/sdfat/sd_raw.c ****             write_length = 512 - block_offset; /* write up to block border */
+ 247              		.loc 1 636 0
+ 248 0134 2558A0E1 		mov	r5, r5, lsr #16
+ 249              	.LVL15:
+ 250 0138 070055E1 		cmp	r5, r7
+ 251 013c 0750A021 		movcs	r5, r7
+ 252              	.LVL16:
+ 643:../Library/sdfat/sd_raw.c ****             if(block_address != raw_block_address)
+ 253              		.loc 1 643 0
+ 254 0140 000056E1 		cmp	r6, r0
+ 255 0144 1500000A 		beq	.L23
+ 646:../Library/sdfat/sd_raw.c ****                 if(!raw_block_written)
+ 256              		.loc 1 646 0
+ 257 0148 0430D4E5 		ldrb	r3, [r4, #4]	@ zero_extendqisi2
+ 258 014c 000053E3 		cmp	r3, #0
+ 259 0150 0400001A 		bne	.L24
+ 648:../Library/sdfat/sd_raw.c ****                     if(!sd_raw_write(raw_block_address, raw_block, sizeof(raw_block)))
+ 260              		.loc 1 648 0
+ 261 0154 24119FE5 		ldr	r1, .L37+4
+ 262 0158 022CA0E3 		mov	r2, #512
+ 263 015c FEFFFFEB 		bl	sd_raw_write
+ 264 0160 000050E3 		cmp	r0, #0
+ 265 0164 4200000A 		beq	.L25
+ 266              	.L24:
+ 653:../Library/sdfat/sd_raw.c ****             if(block_offset || write_length < 512)
+ 267              		.loc 1 653 0
+ 268 0168 003099E2 		adds	r3, r9, #0
+ 269 016c 10219FE5 		ldr	r2, .L37+8
+ 270 0170 0130A013 		movne	r3, #1
+ 271 0174 020055E1 		cmp	r5, r2
+ 272 0178 01308393 		orrls	r3, r3, #1
+ 273 017c 000053E3 		cmp	r3, #0
+ 274 0180 0500000A 		beq	.L26
+ 655:../Library/sdfat/sd_raw.c ****                 if(!sd_raw_read(block_address, raw_block, sizeof(raw_block)))
+ 275              		.loc 1 655 0
+ 276 0184 0600A0E1 		mov	r0, r6
+ 277 0188 F0109FE5 		ldr	r1, .L37+4
+ 278 018c 022CA0E3 		mov	r2, #512
+ 279 0190 FEFFFFEB 		bl	sd_raw_read
+ 280 0194 000050E3 		cmp	r0, #0
+ 281 0198 3500000A 		beq	.L25
+ 282              	.L26:
+ 658:../Library/sdfat/sd_raw.c ****             raw_block_address = block_address;
+ 283              		.loc 1 658 0
+ 284 019c 006084E5 		str	r6, [r4, #0]
+ 285              	.L23:
+ 286              		.loc 1 661 0
+ 287 01a0 0B0058E1 		cmp	r8, fp
+ 288 01a4 0700000A 		beq	.L27
+ 662:../Library/sdfat/sd_raw.c ****         {
+ 663:../Library/sdfat/sd_raw.c ****             memcpy(raw_block + block_offset, buffer, write_length);
+ 289              		.loc 1 663 0
+ 290 01a8 09008BE0 		add	r0, fp, r9
+ 291 01ac 0810A0E1 		mov	r1, r8
+ 292 01b0 0520A0E1 		mov	r2, r5
+ 293 01b4 FEFFFFEB 		bl	memcpy
+ 664:../Library/sdfat/sd_raw.c **** 
+ 665:../Library/sdfat/sd_raw.c ****             #if SD_RAW_WRITE_BUFFERING
+ 666:../Library/sdfat/sd_raw.c ****                 raw_block_written = 0;
+ 294              		.loc 1 666 0
+ 295 01b8 0030A0E3 		mov	r3, #0
+ 667:../Library/sdfat/sd_raw.c ****     
+ 668:../Library/sdfat/sd_raw.c ****                 if(length == write_length)
+ 296              		.loc 1 668 0
+ 297 01bc 050057E1 		cmp	r7, r5
+ 666:../Library/sdfat/sd_raw.c ****                 raw_block_written = 0;
+ 298              		.loc 1 666 0
+ 299 01c0 0430C4E5 		strb	r3, [r4, #4]
+ 300              		.loc 1 668 0
+ 301 01c4 2900000A 		beq	.L34
+ 302              	.L27:
+ 303              	.LVL17:
+ 669:../Library/sdfat/sd_raw.c ****                     return 1;
+ 670:../Library/sdfat/sd_raw.c ****             #endif
+ 671:../Library/sdfat/sd_raw.c ****         }
+ 672:../Library/sdfat/sd_raw.c **** 
+ 673:../Library/sdfat/sd_raw.c ****         buffer += write_length;
+ 674:../Library/sdfat/sd_raw.c **** 
+ 675:../Library/sdfat/sd_raw.c ****         /* address card */
+ 676:../Library/sdfat/sd_raw.c ****         select_card();
+ 304              		.loc 1 676 0
+ 305 01c8 B8909FE5 		ldr	r9, .L37+12
+ 306              	.LVL18:
+ 307 01cc 0C3099E5 		ldr	r3, [r9, #12]
+ 308 01d0 803083E3 		orr	r3, r3, #128
+ 677:../Library/sdfat/sd_raw.c **** 
+ 678:../Library/sdfat/sd_raw.c ****         /* send single block request */
+ 679:../Library/sdfat/sd_raw.c ****         if(sd_raw_send_command_r1(CMD_WRITE_SINGLE_BLOCK, block_address))
+ 309              		.loc 1 679 0
+ 310 01d4 0610A0E1 		mov	r1, r6
+ 676:../Library/sdfat/sd_raw.c ****         select_card();
+ 311              		.loc 1 676 0
+ 312 01d8 0C3089E5 		str	r3, [r9, #12]
+ 313              		.loc 1 679 0
+ 314 01dc 1800A0E3 		mov	r0, #24
+ 315 01e0 98FFFFEB 		bl	sd_raw_send_command_r1
+ 316 01e4 006050E2 		subs	r6, r0, #0
+ 317              	.LVL19:
+ 680:../Library/sdfat/sd_raw.c ****         {
+ 681:../Library/sdfat/sd_raw.c ****             unselect_card();
+ 318              		.loc 1 681 0
+ 319 01e8 04309915 		ldrne	r3, [r9, #4]
+ 320 01ec 80308313 		orrne	r3, r3, #128
+ 321 01f0 04308915 		strne	r3, [r9, #4]
+ 682:../Library/sdfat/sd_raw.c ****             return 0;
+ 322              		.loc 1 682 0
+ 323 01f4 0000A013 		movne	r0, #0
+ 324 01f8 1D00001A 		bne	.L25
+ 325              	.L28:
+ 683:../Library/sdfat/sd_raw.c ****         }
+ 684:../Library/sdfat/sd_raw.c **** 
+ 685:../Library/sdfat/sd_raw.c ****         /* send start byte */
+ 686:../Library/sdfat/sd_raw.c ****         sd_raw_send_byte(0xfe);
+ 326              		.loc 1 686 0
+ 327 01fc FE00A0E3 		mov	r0, #254
+ 328 0200 7EFFFFEB 		bl	sd_raw_send_byte
+ 329              	.LVL20:
+ 687:../Library/sdfat/sd_raw.c **** 
+ 688:../Library/sdfat/sd_raw.c ****         /* write byte block */
+ 689:../Library/sdfat/sd_raw.c ****         unsigned char* cache = raw_block;
+ 690:../Library/sdfat/sd_raw.c ****         unsigned short i;
+ 691:../Library/sdfat/sd_raw.c ****         for(i = 0; i < 512; ++i)
+ 692:../Library/sdfat/sd_raw.c ****             sd_raw_send_byte(*cache++);
+ 330              		.loc 1 692 0
+ 331 0204 74909FE5 		ldr	r9, .L37+4
+ 332              	.LVL21:
+ 333              	.L29:
+ 334              		.loc 1 692 0 is_stmt 0 discriminator 2
+ 335 0208 0600D9E7 		ldrb	r0, [r9, r6]	@ zero_extendqisi2
+ 336 020c 016086E2 		add	r6, r6, #1
+ 337 0210 7AFFFFEB 		bl	sd_raw_send_byte
+ 691:../Library/sdfat/sd_raw.c ****         for(i = 0; i < 512; ++i)
+ 338              		.loc 1 691 0 is_stmt 1 discriminator 2
+ 339 0214 020C56E3 		cmp	r6, #512
+ 340 0218 FAFFFF1A 		bne	.L29
+ 693:../Library/sdfat/sd_raw.c **** 
+ 694:../Library/sdfat/sd_raw.c ****         /* write dummy crc16 */
+ 695:../Library/sdfat/sd_raw.c ****         sd_raw_send_byte(0xff);
+ 341              		.loc 1 695 0
+ 342 021c FF00A0E3 		mov	r0, #255
+ 343 0220 76FFFFEB 		bl	sd_raw_send_byte
+ 696:../Library/sdfat/sd_raw.c ****         sd_raw_send_byte(0xff);
+ 344              		.loc 1 696 0
+ 345 0224 FF00A0E3 		mov	r0, #255
+ 346 0228 74FFFFEB 		bl	sd_raw_send_byte
+ 347              	.L30:
+ 697:../Library/sdfat/sd_raw.c **** 
+ 698:../Library/sdfat/sd_raw.c ****         /* wait while card is busy */
+ 699:../Library/sdfat/sd_raw.c ****         while(sd_raw_rec_byte() != 0xff);
+ 348              		.loc 1 699 0 discriminator 1
+ 349 022c 7AFFFFEB 		bl	sd_raw_rec_byte
+ 350 0230 FF0050E3 		cmp	r0, #255
+ 351 0234 FCFFFF1A 		bne	.L30
+ 700:../Library/sdfat/sd_raw.c ****         sd_raw_rec_byte();
+ 352              		.loc 1 700 0
+ 353 0238 77FFFFEB 		bl	sd_raw_rec_byte
+ 701:../Library/sdfat/sd_raw.c **** 
+ 702:../Library/sdfat/sd_raw.c ****         /* deaddress card */
+ 703:../Library/sdfat/sd_raw.c ****         unselect_card();
+ 354              		.loc 1 703 0
+ 355 023c 44309FE5 		ldr	r3, .L37+12
+ 356 0240 042093E5 		ldr	r2, [r3, #4]
+ 357 0244 802082E3 		orr	r2, r2, #128
+ 358 0248 042083E5 		str	r2, [r3, #4]
+ 704:../Library/sdfat/sd_raw.c **** 
+ 705:../Library/sdfat/sd_raw.c ****         length -= write_length;
+ 359              		.loc 1 705 0
+ 360 024c 077065E0 		rsb	r7, r5, r7
+ 361              	.LVL22:
+ 706:../Library/sdfat/sd_raw.c ****         offset += write_length;
+ 707:../Library/sdfat/sd_raw.c **** 
+ 708:../Library/sdfat/sd_raw.c ****         #if SD_RAW_WRITE_BUFFERING
+ 709:../Library/sdfat/sd_raw.c ****             raw_block_written = 1;
+ 362              		.loc 1 709 0
+ 363 0250 0130A0E3 		mov	r3, #1
+ 705:../Library/sdfat/sd_raw.c ****         length -= write_length;
+ 364              		.loc 1 705 0
+ 365 0254 0778A0E1 		mov	r7, r7, asl #16
+ 366              		.loc 1 709 0
+ 367 0258 0430C4E5 		strb	r3, [r4, #4]
+ 673:../Library/sdfat/sd_raw.c ****         buffer += write_length;
+ 368              		.loc 1 673 0
+ 369 025c 058088E0 		add	r8, r8, r5
+ 370              	.LVL23:
+ 705:../Library/sdfat/sd_raw.c ****         length -= write_length;
+ 371              		.loc 1 705 0
+ 372 0260 2778A0E1 		mov	r7, r7, lsr #16
+ 373              	.LVL24:
+ 706:../Library/sdfat/sd_raw.c ****         offset += write_length;
+ 374              		.loc 1 706 0
+ 375 0264 05A08AE0 		add	sl, sl, r5
+ 376              	.LVL25:
+ 377              	.L22:
+ 378              	.LBE4:
+ 631:../Library/sdfat/sd_raw.c ****         while(length > 0)
+ 379              		.loc 1 631 0 discriminator 1
+ 380 0268 000057E3 		cmp	r7, #0
+ 381 026c A9FFFF1A 		bne	.L31
+ 382              	.L34:
+ 383              	.LBB5:
+ 669:../Library/sdfat/sd_raw.c ****                     return 1;
+ 384              		.loc 1 669 0
+ 385 0270 0100A0E3 		mov	r0, #1
+ 386              	.LVL26:
+ 387              	.L25:
+ 388              	.LBE5:
+ 710:../Library/sdfat/sd_raw.c ****         #endif
+ 711:../Library/sdfat/sd_raw.c ****     }
+ 712:../Library/sdfat/sd_raw.c **** 
+ 713:../Library/sdfat/sd_raw.c ****     return 1;
+ 714:../Library/sdfat/sd_raw.c ****     #else
+ 715:../Library/sdfat/sd_raw.c ****         return 0;
+ 716:../Library/sdfat/sd_raw.c ****     #endif
+ 717:../Library/sdfat/sd_raw.c **** }
+ 389              		.loc 1 717 0
+ 390 0274 F04FBDE8 		ldmfd	sp!, {r4, r5, r6, r7, r8, r9, sl, fp, lr}
+ 391 0278 1EFF2FE1 		bx	lr
+ 392              	.L38:
+ 393              		.align	2
+ 394              	.L37:
+ 395 027c 00000000 		.word	.LANCHOR0
+ 396 0280 05000000 		.word	.LANCHOR0+5
+ 397 0284 FF010000 		.word	511
+ 398 0288 008002E0 		.word	-536707072
+ 399              		.cfi_endproc
+ 400              	.LFE8:
+ 402              		.align	2
+ 403              		.global	sd_raw_read
+ 405              	sd_raw_read:
+ 406              	.LFB6:
+ 402:../Library/sdfat/sd_raw.c **** {
+ 407              		.loc 1 402 0
+ 408              		.cfi_startproc
+ 409              		@ Function supports interworking.
+ 410              		@ args = 0, pretend = 0, frame = 0
+ 411              		@ frame_needed = 0, uses_anonymous_args = 0
+ 412              	.LVL27:
+ 413 028c 0228A0E1 		mov	r2, r2, asl #16
+ 414              	.LVL28:
+ 415 0290 F04F2DE9 		stmfd	sp!, {r4, r5, r6, r7, r8, r9, sl, fp, lr}
+ 416              	.LCFI2:
+ 417              		.cfi_def_cfa_offset 36
+ 418              		.cfi_offset 14, -4
+ 419              		.cfi_offset 11, -8
+ 420              		.cfi_offset 10, -12
+ 421              		.cfi_offset 9, -16
+ 422              		.cfi_offset 8, -20
+ 423              		.cfi_offset 7, -24
+ 424              		.cfi_offset 6, -28
+ 425              		.cfi_offset 5, -32
+ 426              		.cfi_offset 4, -36
+ 402:../Library/sdfat/sd_raw.c **** {
+ 427              		.loc 1 402 0
+ 428 0294 0080A0E1 		mov	r8, r0
+ 429 0298 0170A0E1 		mov	r7, r1
+ 430 029c 2268A0E1 		mov	r6, r2, lsr #16
+ 417:../Library/sdfat/sd_raw.c ****             if(block_address != raw_block_address)
+ 431              		.loc 1 417 0
+ 432 02a0 1C919FE5 		ldr	r9, .L52
+ 406:../Library/sdfat/sd_raw.c ****     while(length > 0)
+ 433              		.loc 1 406 0
+ 434 02a4 410000EA 		b	.L40
+ 435              	.LVL29:
+ 436              	.L47:
+ 410:../Library/sdfat/sd_raw.c ****         block_offset = offset & 0x01ff;
+ 437              		.loc 1 410 0
+ 438 02a8 88ABA0E1 		mov	sl, r8, asl #23
+ 439 02ac AAABA0E1 		mov	sl, sl, lsr #23
+ 411:../Library/sdfat/sd_raw.c ****         read_length = 512 - block_offset; /* read up to block border */
+ 440              		.loc 1 411 0
+ 441 02b0 024C6AE2 		rsb	r4, sl, #512
+ 409:../Library/sdfat/sd_raw.c ****         block_address = offset & 0xfffffe00;
+ 442              		.loc 1 409 0
+ 443 02b4 7F5FC8E3 		bic	r5, r8, #508
+ 411:../Library/sdfat/sd_raw.c ****         read_length = 512 - block_offset; /* read up to block border */
+ 444              		.loc 1 411 0
+ 445 02b8 0448A0E1 		mov	r4, r4, asl #16
+ 417:../Library/sdfat/sd_raw.c ****             if(block_address != raw_block_address)
+ 446              		.loc 1 417 0
+ 447 02bc 000099E5 		ldr	r0, [r9, #0]
+ 409:../Library/sdfat/sd_raw.c ****         block_address = offset & 0xfffffe00;
+ 448              		.loc 1 409 0
+ 449 02c0 0350C5E3 		bic	r5, r5, #3
+ 450              	.LVL30:
+ 411:../Library/sdfat/sd_raw.c ****         read_length = 512 - block_offset; /* read up to block border */
+ 451              		.loc 1 411 0
+ 452 02c4 2448A0E1 		mov	r4, r4, lsr #16
+ 453              	.LVL31:
+ 454 02c8 060054E1 		cmp	r4, r6
+ 455 02cc 0640A021 		movcs	r4, r6
+ 456              	.LVL32:
+ 417:../Library/sdfat/sd_raw.c ****             if(block_address != raw_block_address)
+ 457              		.loc 1 417 0
+ 458 02d0 000055E1 		cmp	r5, r0
+ 459 02d4 2C00000A 		beq	.L41
+ 460              	.LBB6:
+ 421:../Library/sdfat/sd_raw.c ****                 if(!raw_block_written)
+ 461              		.loc 1 421 0
+ 462 02d8 0430D9E5 		ldrb	r3, [r9, #4]	@ zero_extendqisi2
+ 463 02dc 000053E3 		cmp	r3, #0
+ 464 02e0 0400001A 		bne	.L42
+ 423:../Library/sdfat/sd_raw.c ****                     if(!sd_raw_write(raw_block_address, raw_block, sizeof(raw_block)))
+ 465              		.loc 1 423 0
+ 466 02e4 DC109FE5 		ldr	r1, .L52+4
+ 467 02e8 022CA0E3 		mov	r2, #512
+ 468 02ec FEFFFFEB 		bl	sd_raw_write
+ 469 02f0 000050E3 		cmp	r0, #0
+ 470 02f4 3000000A 		beq	.L43
+ 471              	.L42:
+ 429:../Library/sdfat/sd_raw.c ****             select_card();
+ 472              		.loc 1 429 0
+ 473 02f8 CCB09FE5 		ldr	fp, .L52+8
+ 474 02fc 0C309BE5 		ldr	r3, [fp, #12]
+ 475 0300 803083E3 		orr	r3, r3, #128
+ 476 0304 0C308BE5 		str	r3, [fp, #12]
+ 432:../Library/sdfat/sd_raw.c ****             if(sd_raw_send_command_r1(CMD_READ_SINGLE_BLOCK, block_address))
+ 477              		.loc 1 432 0
+ 478 0308 1100A0E3 		mov	r0, #17
+ 479 030c 0510A0E1 		mov	r1, r5
+ 480 0310 4CFFFFEB 		bl	sd_raw_send_command_r1
+ 481 0314 000050E3 		cmp	r0, #0
+ 434:../Library/sdfat/sd_raw.c ****                 unselect_card();
+ 482              		.loc 1 434 0
+ 483 0318 04309B15 		ldrne	r3, [fp, #4]
+ 484 031c 80308313 		orrne	r3, r3, #128
+ 485 0320 04308B15 		strne	r3, [fp, #4]
+ 435:../Library/sdfat/sd_raw.c ****                 return 0;
+ 486              		.loc 1 435 0
+ 487 0324 0000A013 		movne	r0, #0
+ 488 0328 2300001A 		bne	.L43
+ 489              	.L49:
+ 439:../Library/sdfat/sd_raw.c ****             while(sd_raw_rec_byte() != 0xfe);
+ 490              		.loc 1 439 0 discriminator 1
+ 491 032c 3AFFFFEB 		bl	sd_raw_rec_byte
+ 492 0330 FE0050E3 		cmp	r0, #254
+ 493 0334 FCFFFF1A 		bne	.L49
+ 439:../Library/sdfat/sd_raw.c ****             while(sd_raw_rec_byte() != 0xfe);
+ 494              		.loc 1 439 0 is_stmt 0
+ 495 0338 00B0A0E3 		mov	fp, #0
+ 496              	.L45:
+ 455:../Library/sdfat/sd_raw.c ****                     *cache++ = sd_raw_rec_byte();
+ 497              		.loc 1 455 0 is_stmt 1 discriminator 2
+ 498 033c 36FFFFEB 		bl	sd_raw_rec_byte
+ 499 0340 80309FE5 		ldr	r3, .L52+4
+ 500 0344 0B00C3E7 		strb	r0, [r3, fp]
+ 501 0348 01B08BE2 		add	fp, fp, #1
+ 454:../Library/sdfat/sd_raw.c ****                 for(i = 0; i < 512; ++i)
+ 502              		.loc 1 454 0 discriminator 2
+ 503 034c 020C5BE3 		cmp	fp, #512
+ 504 0350 F9FFFF1A 		bne	.L45
+ 456:../Library/sdfat/sd_raw.c ****                 raw_block_address = block_address;
+ 505              		.loc 1 456 0
+ 506 0354 055003E5 		str	r5, [r3, #-5]
+ 458:../Library/sdfat/sd_raw.c ****                 memcpy(buffer, raw_block + block_offset, read_length);
+ 507              		.loc 1 458 0
+ 508 0358 0A1083E0 		add	r1, r3, sl
+ 509 035c 0420A0E1 		mov	r2, r4
+ 510 0360 0700A0E1 		mov	r0, r7
+ 511 0364 FEFFFFEB 		bl	memcpy
+ 463:../Library/sdfat/sd_raw.c ****             sd_raw_rec_byte();
+ 512              		.loc 1 463 0
+ 513 0368 2BFFFFEB 		bl	sd_raw_rec_byte
+ 464:../Library/sdfat/sd_raw.c ****             sd_raw_rec_byte();
+ 514              		.loc 1 464 0
+ 515 036c 2AFFFFEB 		bl	sd_raw_rec_byte
+ 467:../Library/sdfat/sd_raw.c ****             unselect_card();
+ 516              		.loc 1 467 0
+ 517 0370 54309FE5 		ldr	r3, .L52+8
+ 518 0374 042093E5 		ldr	r2, [r3, #4]
+ 519 0378 802082E3 		orr	r2, r2, #128
+ 520 037c 042083E5 		str	r2, [r3, #4]
+ 459:../Library/sdfat/sd_raw.c ****                 buffer += read_length;
+ 521              		.loc 1 459 0
+ 522 0380 047087E0 		add	r7, r7, r4
+ 523              	.LVL33:
+ 470:../Library/sdfat/sd_raw.c ****             sd_raw_rec_byte();
+ 524              		.loc 1 470 0
+ 525 0384 24FFFFEB 		bl	sd_raw_rec_byte
+ 526 0388 040000EA 		b	.L46
+ 527              	.LVL34:
+ 528              	.L41:
+ 529              	.LBE6:
+ 476:../Library/sdfat/sd_raw.c ****                 memcpy(buffer, raw_block + block_offset, read_length);
+ 530              		.loc 1 476 0
+ 531 038c 34309FE5 		ldr	r3, .L52+4
+ 532 0390 0700A0E1 		mov	r0, r7
+ 533 0394 0A1083E0 		add	r1, r3, sl
+ 534 0398 0420A0E1 		mov	r2, r4
+ 535 039c FEFFFFEB 		bl	memcpy
+ 536              	.L46:
+ 480:../Library/sdfat/sd_raw.c ****         length -= read_length;
+ 537              		.loc 1 480 0
+ 538 03a0 066064E0 		rsb	r6, r4, r6
+ 539              	.LVL35:
+ 540 03a4 0668A0E1 		mov	r6, r6, asl #16
+ 541 03a8 2668A0E1 		mov	r6, r6, lsr #16
+ 542              	.LVL36:
+ 481:../Library/sdfat/sd_raw.c ****         offset += read_length;
+ 543              		.loc 1 481 0
+ 544 03ac 048088E0 		add	r8, r8, r4
+ 545              	.LVL37:
+ 546              	.L40:
+ 406:../Library/sdfat/sd_raw.c ****     while(length > 0)
+ 547              		.loc 1 406 0 discriminator 1
+ 548 03b0 000056E3 		cmp	r6, #0
+ 549 03b4 BBFFFF1A 		bne	.L47
+ 484:../Library/sdfat/sd_raw.c ****     return 1;
+ 550              		.loc 1 484 0
+ 551 03b8 0100A0E3 		mov	r0, #1
+ 552              	.L43:
+ 485:../Library/sdfat/sd_raw.c **** }
+ 553              		.loc 1 485 0
+ 554 03bc F04FBDE8 		ldmfd	sp!, {r4, r5, r6, r7, r8, r9, sl, fp, lr}
+ 555 03c0 1EFF2FE1 		bx	lr
+ 556              	.L53:
+ 557              		.align	2
+ 558              	.L52:
+ 559 03c4 00000000 		.word	.LANCHOR0
+ 560 03c8 05000000 		.word	.LANCHOR0+5
+ 561 03cc 008002E0 		.word	-536707072
+ 562              		.cfi_endproc
+ 563              	.LFE6:
+ 565              		.align	2
+ 566              		.global	sd_raw_read_interval
+ 568              	sd_raw_read_interval:
+ 569              	.LFB7:
+ 512:../Library/sdfat/sd_raw.c **** {
+ 570              		.loc 1 512 0
+ 571              		.cfi_startproc
+ 572              		@ Function supports interworking.
+ 573              		@ args = 8, pretend = 0, frame = 0
+ 574              		@ frame_needed = 0, uses_anonymous_args = 0
+ 575              	.LVL38:
+ 576 03d0 F0452DE9 		stmfd	sp!, {r4, r5, r6, r7, r8, sl, lr}
+ 577              	.LCFI3:
+ 578              		.cfi_def_cfa_offset 28
+ 579              		.cfi_offset 14, -4
+ 580              		.cfi_offset 10, -8
+ 581              		.cfi_offset 8, -12
+ 582              		.cfi_offset 7, -16
+ 583              		.cfi_offset 6, -20
+ 584              		.cfi_offset 5, -24
+ 585              		.cfi_offset 4, -28
+ 512:../Library/sdfat/sd_raw.c **** {
+ 586              		.loc 1 512 0
+ 587 03d4 0228A0E1 		mov	r2, r2, asl #16
+ 588              	.LVL39:
+ 513:../Library/sdfat/sd_raw.c ****     if(!buffer || interval == 0 || length < interval || !callback)
+ 589              		.loc 1 513 0
+ 590 03d8 000051E3 		cmp	r1, #0
+ 591 03dc 00005213 		cmpne	r2, #0
+ 512:../Library/sdfat/sd_raw.c **** {
+ 592              		.loc 1 512 0
+ 593 03e0 1C508DE2 		add	r5, sp, #28
+ 594 03e4 0338A0E1 		mov	r3, r3, asl #16
+ 595              	.LVL40:
+ 596 03e8 0040A0E1 		mov	r4, r0
+ 597 03ec 600095E8 		ldmia	r5, {r5, r6}
+ 513:../Library/sdfat/sd_raw.c ****     if(!buffer || interval == 0 || length < interval || !callback)
+ 598              		.loc 1 513 0
+ 599 03f0 0000A013 		movne	r0, #0
+ 600 03f4 0100A003 		moveq	r0, #1
+ 601              	.LVL41:
+ 512:../Library/sdfat/sd_raw.c **** {
+ 602              		.loc 1 512 0
+ 603 03f8 2388A0E1 		mov	r8, r3, lsr #16
+ 513:../Library/sdfat/sd_raw.c ****     if(!buffer || interval == 0 || length < interval || !callback)
+ 604              		.loc 1 513 0
+ 605 03fc 2278A0E1 		mov	r7, r2, lsr #16
+ 606 0400 01A0A0E1 		mov	sl, r1
+ 514:../Library/sdfat/sd_raw.c ****         return 0;
+ 607              		.loc 1 514 0
+ 608 0404 0000A003 		moveq	r0, #0
+ 513:../Library/sdfat/sd_raw.c ****     if(!buffer || interval == 0 || length < interval || !callback)
+ 609              		.loc 1 513 0
+ 610 0408 1A00000A 		beq	.L55
+ 513:../Library/sdfat/sd_raw.c ****     if(!buffer || interval == 0 || length < interval || !callback)
+ 611              		.loc 1 513 0 is_stmt 0 discriminator 1
+ 612 040c 070058E1 		cmp	r8, r7
+ 613 0410 0030A023 		movcs	r3, #0
+ 614 0414 0130A033 		movcc	r3, #1
+ 615 0418 000055E3 		cmp	r5, #0
+ 616 041c 01308303 		orreq	r3, r3, #1
+ 617 0420 000053E3 		cmp	r3, #0
+ 618 0424 1300001A 		bne	.L55
+ 619              	.LVL42:
+ 620              	.L61:
+ 522:../Library/sdfat/sd_raw.c ****             if(!sd_raw_read(offset, buffer, interval))
+ 621              		.loc 1 522 0 is_stmt 1
+ 622 0428 0400A0E1 		mov	r0, r4
+ 623 042c 0A10A0E1 		mov	r1, sl
+ 624 0430 0720A0E1 		mov	r2, r7
+ 625 0434 FEFFFFEB 		bl	sd_raw_read
+ 626 0438 000050E3 		cmp	r0, #0
+ 627 043c 0D00000A 		beq	.L55
+ 524:../Library/sdfat/sd_raw.c ****             if(!callback(buffer, offset, p))
+ 628              		.loc 1 524 0
+ 629 0440 0A00A0E1 		mov	r0, sl
+ 630 0444 0410A0E1 		mov	r1, r4
+ 631 0448 0620A0E1 		mov	r2, r6
+ 632 044c 0FE0A0E1 		mov	lr, pc
+ 633 0450 15FF2FE1 		bx	r5
+ 634 0454 000050E3 		cmp	r0, #0
+ 635 0458 0500000A 		beq	.L60
+ 527:../Library/sdfat/sd_raw.c ****             length -= interval;
+ 636              		.loc 1 527 0
+ 637 045c 088067E0 		rsb	r8, r7, r8
+ 638 0460 0888A0E1 		mov	r8, r8, asl #16
+ 639 0464 2888A0E1 		mov	r8, r8, lsr #16
+ 517:../Library/sdfat/sd_raw.c ****         while(length >= interval)
+ 640              		.loc 1 517 0
+ 641 0468 070058E1 		cmp	r8, r7
+ 511:../Library/sdfat/sd_raw.c **** unsigned char sd_raw_read_interval(unsigned int offset, unsigned char* buffer, unsigned short inter
+ 642              		.loc 1 511 0
+ 643 046c 074084E0 		add	r4, r4, r7
+ 644              	.LVL43:
+ 517:../Library/sdfat/sd_raw.c ****         while(length >= interval)
+ 645              		.loc 1 517 0
+ 646 0470 ECFFFF2A 		bcs	.L61
+ 647              	.LVL44:
+ 648              	.L60:
+ 530:../Library/sdfat/sd_raw.c ****         return 1;
+ 649              		.loc 1 530 0
+ 650 0474 0100A0E3 		mov	r0, #1
+ 651              	.L55:
+ 605:../Library/sdfat/sd_raw.c **** }
+ 652              		.loc 1 605 0
+ 653 0478 F045BDE8 		ldmfd	sp!, {r4, r5, r6, r7, r8, sl, lr}
+ 654 047c 1EFF2FE1 		bx	lr
+ 655              		.cfi_endproc
+ 656              	.LFE7:
+ 658              		.align	2
+ 659              		.global	sd_raw_init
+ 661              	sd_raw_init:
+ 662              	.LFB0:
+ 159:../Library/sdfat/sd_raw.c **** {
+ 663              		.loc 1 159 0
+ 664              		.cfi_startproc
+ 665              		@ Function supports interworking.
+ 666              		@ args = 0, pretend = 0, frame = 0
+ 667              		@ frame_needed = 0, uses_anonymous_args = 0
+ 668 0480 70402DE9 		stmfd	sp!, {r4, r5, r6, lr}
+ 669              	.LCFI4:
+ 670              		.cfi_def_cfa_offset 16
+ 671              		.cfi_offset 14, -4
+ 672              		.cfi_offset 6, -8
+ 673              		.cfi_offset 5, -12
+ 674              		.cfi_offset 4, -16
+ 165:../Library/sdfat/sd_raw.c ****     configure_pin_ss();
+ 675              		.loc 1 165 0
+ 676 0484 A0619FE5 		ldr	r6, .L78
+ 677 0488 083096E5 		ldr	r3, [r6, #8]
+ 678 048c 803083E3 		orr	r3, r3, #128
+ 679 0490 083086E5 		str	r3, [r6, #8]
+ 166:../Library/sdfat/sd_raw.c ****     configure_pin_mosi();
+ 680              		.loc 1 166 0
+ 681 0494 94319FE5 		ldr	r3, .L78+4
+ 682 0498 002093E5 		ldr	r2, [r3, #0]
+ 683 049c 012A82E3 		orr	r2, r2, #4096
+ 684 04a0 002083E5 		str	r2, [r3, #0]
+ 167:../Library/sdfat/sd_raw.c ****     configure_pin_miso();
+ 685              		.loc 1 167 0
+ 686 04a4 002093E5 		ldr	r2, [r3, #0]
+ 687 04a8 012B82E3 		orr	r2, r2, #1024
+ 688 04ac 002083E5 		str	r2, [r3, #0]
+ 168:../Library/sdfat/sd_raw.c ****     configure_pin_sck();
+ 689              		.loc 1 168 0
+ 690 04b0 002093E5 		ldr	r2, [r3, #0]
+ 691 04b4 012C82E3 		orr	r2, r2, #256
+ 692 04b8 002083E5 		str	r2, [r3, #0]
+ 170:../Library/sdfat/sd_raw.c ****     unselect_card();
+ 693              		.loc 1 170 0
+ 694 04bc 043096E5 		ldr	r3, [r6, #4]
+ 695 04c0 803083E3 		orr	r3, r3, #128
+ 696 04c4 043086E5 		str	r3, [r6, #4]
+ 173:../Library/sdfat/sd_raw.c ****     S0SPCCR = 150;  /* Set frequency to 400kHz */
+ 697              		.loc 1 173 0
+ 698 04c8 64319FE5 		ldr	r3, .L78+8
+ 699 04cc 9620A0E3 		mov	r2, #150
+ 700 04d0 0C2083E5 		str	r2, [r3, #12]
+ 174:../Library/sdfat/sd_raw.c ****     S0SPCR = 0x38;
+ 701              		.loc 1 174 0
+ 702 04d4 3820A0E3 		mov	r2, #56
+ 703 04d8 002083E5 		str	r2, [r3, #0]
+ 179:../Library/sdfat/sd_raw.c ****     if(!sd_raw_available())
+ 704              		.loc 1 179 0
+ 705 04dc FEFFFFEB 		bl	sd_raw_available
+ 706 04e0 004050E2 		subs	r4, r0, #0
+ 181:../Library/sdfat/sd_raw.c ****         rprintf("SD RAW NOT AVAILABLE\n\r");
+ 707              		.loc 1 181 0
+ 708 04e4 4C019F05 		ldreq	r0, .L78+12
+ 179:../Library/sdfat/sd_raw.c ****     if(!sd_raw_available())
+ 709              		.loc 1 179 0
+ 710 04e8 3000000A 		beq	.L77
+ 184:../Library/sdfat/sd_raw.c ****     configure_pin_ss();
+ 711              		.loc 1 184 0
+ 712 04ec 083096E5 		ldr	r3, [r6, #8]
+ 713 04f0 803083E3 		orr	r3, r3, #128
+ 714 04f4 083086E5 		str	r3, [r6, #8]
+ 185:../Library/sdfat/sd_raw.c ****     unselect_card();
+ 715              		.loc 1 185 0
+ 716 04f8 043096E5 		ldr	r3, [r6, #4]
+ 717 04fc 803083E3 		orr	r3, r3, #128
+ 718 0500 043086E5 		str	r3, [r6, #4]
+ 719              	.LVL45:
+ 720 0504 0A40A0E3 		mov	r4, #10
+ 721              	.LVL46:
+ 722              	.L66:
+ 192:../Library/sdfat/sd_raw.c ****         sd_raw_rec_byte();
+ 723              		.loc 1 192 0 discriminator 2
+ 724 0508 014044E2 		sub	r4, r4, #1
+ 725 050c 0448A0E1 		mov	r4, r4, asl #16
+ 726 0510 C1FEFFEB 		bl	sd_raw_rec_byte
+ 189:../Library/sdfat/sd_raw.c ****     for(i = 0; i < 10; ++i)
+ 727              		.loc 1 189 0 discriminator 2
+ 728 0514 2448B0E1 		movs	r4, r4, lsr #16
+ 729 0518 FAFFFF1A 		bne	.L66
+ 196:../Library/sdfat/sd_raw.c ****     select_card();
+ 730              		.loc 1 196 0
+ 731 051c 08319FE5 		ldr	r3, .L78
+ 732 0520 0C2093E5 		ldr	r2, [r3, #12]
+ 733 0524 802082E3 		orr	r2, r2, #128
+ 734 0528 0C2083E5 		str	r2, [r3, #12]
+ 735              	.LVL47:
+ 736 052c 024CA0E3 		mov	r4, #512
+ 737              	.LVL48:
+ 738              	.L68:
+ 202:../Library/sdfat/sd_raw.c ****         response = sd_raw_send_command_r1(CMD_GO_IDLE_STATE, 0);
+ 739              		.loc 1 202 0
+ 740 0530 0000A0E3 		mov	r0, #0
+ 741 0534 0010A0E1 		mov	r1, r0
+ 742 0538 C2FEFFEB 		bl	sd_raw_send_command_r1
+ 203:../Library/sdfat/sd_raw.c ****         if(response == (1 << R1_IDLE_STATE))
+ 743              		.loc 1 203 0
+ 744 053c 010050E3 		cmp	r0, #1
+ 202:../Library/sdfat/sd_raw.c ****         response = sd_raw_send_command_r1(CMD_GO_IDLE_STATE, 0);
+ 745              		.loc 1 202 0
+ 746 0540 0010A0E1 		mov	r1, r0
+ 747              	.LVL49:
+ 203:../Library/sdfat/sd_raw.c ****         if(response == (1 << R1_IDLE_STATE))
+ 748              		.loc 1 203 0
+ 749 0544 0A00000A 		beq	.L71
+ 750 0548 014044E2 		sub	r4, r4, #1
+ 751 054c 0448A0E1 		mov	r4, r4, asl #16
+ 206:../Library/sdfat/sd_raw.c ****         if(i == 0x1ff)
+ 752              		.loc 1 206 0
+ 753 0550 2448B0E1 		movs	r4, r4, lsr #16
+ 754 0554 F5FFFF1A 		bne	.L68
+ 208:../Library/sdfat/sd_raw.c ****             rprintf("\n\rresponse: %d\n\r",response);
+ 755              		.loc 1 208 0
+ 756 0558 DC009FE5 		ldr	r0, .L78+16
+ 757              	.LVL50:
+ 758 055c FEFFFFEB 		bl	rprintf
+ 759              	.LVL51:
+ 209:../Library/sdfat/sd_raw.c ****             unselect_card();
+ 760              		.loc 1 209 0
+ 761 0560 C4309FE5 		ldr	r3, .L78
+ 762 0564 042093E5 		ldr	r2, [r3, #4]
+ 763 0568 802082E3 		orr	r2, r2, #128
+ 764 056c 042083E5 		str	r2, [r3, #4]
+ 210:../Library/sdfat/sd_raw.c ****             return 0;
+ 765              		.loc 1 210 0
+ 766 0570 2A0000EA 		b	.L65
+ 767              	.LVL52:
+ 768              	.L71:
+ 203:../Library/sdfat/sd_raw.c ****         if(response == (1 << R1_IDLE_STATE))
+ 769              		.loc 1 203 0
+ 770 0574 0249A0E3 		mov	r4, #32768
+ 771              	.LVL53:
+ 772              	.L67:
+ 217:../Library/sdfat/sd_raw.c ****         response = sd_raw_send_command_r1(CMD_SEND_OP_COND, 0);
+ 773              		.loc 1 217 0
+ 774 0578 0100A0E3 		mov	r0, #1
+ 775 057c 0010A0E3 		mov	r1, #0
+ 776 0580 B0FEFFEB 		bl	sd_raw_send_command_r1
+ 777              	.LVL54:
+ 218:../Library/sdfat/sd_raw.c ****         if(!(response & (1 << R1_IDLE_STATE)))
+ 778              		.loc 1 218 0
+ 779 0584 015010E2 		ands	r5, r0, #1
+ 780 0588 0A00000A 		beq	.L69
+ 781 058c 014044E2 		sub	r4, r4, #1
+ 782 0590 0448A0E1 		mov	r4, r4, asl #16
+ 221:../Library/sdfat/sd_raw.c ****         if(i == 0x7fff)
+ 783              		.loc 1 221 0
+ 784 0594 2448B0E1 		movs	r4, r4, lsr #16
+ 785 0598 F6FFFF1A 		bne	.L67
+ 223:../Library/sdfat/sd_raw.c ****             unselect_card();
+ 786              		.loc 1 223 0
+ 787 059c 88309FE5 		ldr	r3, .L78
+ 788 05a0 042093E5 		ldr	r2, [r3, #4]
+ 789 05a4 802082E3 		orr	r2, r2, #128
+ 790 05a8 042083E5 		str	r2, [r3, #4]
+ 224:../Library/sdfat/sd_raw.c ****             rprintf("i = 0x7fff\n\r");
+ 791              		.loc 1 224 0
+ 792 05ac 8C009FE5 		ldr	r0, .L78+20
+ 793              	.LVL55:
+ 794              	.L77:
+ 795 05b0 FEFFFFEB 		bl	rprintf
+ 225:../Library/sdfat/sd_raw.c ****             return 0;
+ 796              		.loc 1 225 0
+ 797 05b4 190000EA 		b	.L65
+ 798              	.LVL56:
+ 799              	.L69:
+ 230:../Library/sdfat/sd_raw.c ****     if(sd_raw_send_command_r1(CMD_SET_BLOCKLEN, 512))
+ 800              		.loc 1 230 0
+ 801 05b8 1000A0E3 		mov	r0, #16
+ 802              	.LVL57:
+ 803 05bc 021CA0E3 		mov	r1, #512
+ 804 05c0 A0FEFFEB 		bl	sd_raw_send_command_r1
+ 805 05c4 60309FE5 		ldr	r3, .L78
+ 232:../Library/sdfat/sd_raw.c ****         unselect_card();
+ 806              		.loc 1 232 0
+ 807 05c8 042093E5 		ldr	r2, [r3, #4]
+ 230:../Library/sdfat/sd_raw.c ****     if(sd_raw_send_command_r1(CMD_SET_BLOCKLEN, 512))
+ 808              		.loc 1 230 0
+ 809 05cc 000050E3 		cmp	r0, #0
+ 232:../Library/sdfat/sd_raw.c ****         unselect_card();
+ 810              		.loc 1 232 0
+ 811 05d0 802082E3 		orr	r2, r2, #128
+ 812 05d4 042083E5 		str	r2, [r3, #4]
+ 233:../Library/sdfat/sd_raw.c ****         rprintf("BLOCK SIZE SET ERR \n\r");
+ 813              		.loc 1 233 0
+ 814 05d8 64009F15 		ldrne	r0, .L78+24
+ 230:../Library/sdfat/sd_raw.c ****     if(sd_raw_send_command_r1(CMD_SET_BLOCKLEN, 512))
+ 815              		.loc 1 230 0
+ 816 05dc 0D00001A 		bne	.L76
+ 242:../Library/sdfat/sd_raw.c **** 	S0SPCCR = 6;	/* Try setting the SPI Freq. to 10 MHz */
+ 817              		.loc 1 242 0
+ 818 05e0 4C309FE5 		ldr	r3, .L78+8
+ 246:../Library/sdfat/sd_raw.c ****         raw_block_address = 0xffffffff;
+ 819              		.loc 1 246 0
+ 820 05e4 5C109FE5 		ldr	r1, .L78+28
+ 242:../Library/sdfat/sd_raw.c **** 	S0SPCCR = 6;	/* Try setting the SPI Freq. to 10 MHz */
+ 821              		.loc 1 242 0
+ 822 05e8 0620A0E3 		mov	r2, #6
+ 823 05ec 0C2083E5 		str	r2, [r3, #12]
+ 248:../Library/sdfat/sd_raw.c ****         raw_block_written = 1;
+ 824              		.loc 1 248 0
+ 825 05f0 0140A0E3 		mov	r4, #1
+ 246:../Library/sdfat/sd_raw.c ****         raw_block_address = 0xffffffff;
+ 826              		.loc 1 246 0
+ 827 05f4 0030E0E3 		mvn	r3, #0
+ 828 05f8 003081E5 		str	r3, [r1, #0]
+ 248:../Library/sdfat/sd_raw.c ****         raw_block_written = 1;
+ 829              		.loc 1 248 0
+ 830 05fc 0440C1E5 		strb	r4, [r1, #4]
+ 250:../Library/sdfat/sd_raw.c ****     if(!sd_raw_read(0, raw_block, sizeof(raw_block)))
+ 831              		.loc 1 250 0
+ 832 0600 022CA0E3 		mov	r2, #512
+ 833 0604 051081E2 		add	r1, r1, #5
+ 834 0608 FEFFFFEB 		bl	sd_raw_read
+ 835 060c 005050E2 		subs	r5, r0, #0
+ 836 0610 0200001A 		bne	.L65
+ 252:../Library/sdfat/sd_raw.c ****         rprintf("sd_raw_read borks\n\r");
+ 837              		.loc 1 252 0
+ 838 0614 30009FE5 		ldr	r0, .L78+32
+ 839              	.L76:
+ 840 0618 FEFFFFEB 		bl	rprintf
+ 253:../Library/sdfat/sd_raw.c ****         return 0;
+ 841              		.loc 1 253 0
+ 842 061c 0540A0E1 		mov	r4, r5
+ 843              	.L65:
+ 258:../Library/sdfat/sd_raw.c **** }
+ 844              		.loc 1 258 0
+ 845 0620 0400A0E1 		mov	r0, r4
+ 846 0624 7040BDE8 		ldmfd	sp!, {r4, r5, r6, lr}
+ 847 0628 1EFF2FE1 		bx	lr
+ 848              	.L79:
+ 849              		.align	2
+ 850              	.L78:
+ 851 062c 008002E0 		.word	-536707072
+ 852 0630 00C002E0 		.word	-536690688
+ 853 0634 000002E0 		.word	-536739840
+ 854 0638 00000000 		.word	.LC0
+ 855 063c 17000000 		.word	.LC1
+ 856 0640 28000000 		.word	.LC2
+ 857 0644 35000000 		.word	.LC3
+ 858 0648 00000000 		.word	.LANCHOR0
+ 859 064c 4B000000 		.word	.LC4
+ 860              		.cfi_endproc
+ 861              	.LFE0:
+ 863              		.align	2
+ 864              		.global	sd_raw_sync
+ 866              	sd_raw_sync:
+ 867              	.LFB9:
+ 718:../Library/sdfat/sd_raw.c **** 
+ 719:../Library/sdfat/sd_raw.c **** /**
+ 720:../Library/sdfat/sd_raw.c ****  * \ingroup sd_raw
+ 721:../Library/sdfat/sd_raw.c ****  * Writes the write buffer's content to the card.
+ 722:../Library/sdfat/sd_raw.c ****  *
+ 723:../Library/sdfat/sd_raw.c ****  * \note When write buffering is enabled, you should
+ 724:../Library/sdfat/sd_raw.c ****  *       call this function before disconnecting the
+ 725:../Library/sdfat/sd_raw.c ****  *       card to ensure all remaining data has been
+ 726:../Library/sdfat/sd_raw.c ****  *       written.
+ 727:../Library/sdfat/sd_raw.c ****  *
+ 728:../Library/sdfat/sd_raw.c ****  * \returns 0 on failure, 1 on success.
+ 729:../Library/sdfat/sd_raw.c ****  * \see sd_raw_write
+ 730:../Library/sdfat/sd_raw.c ****  */
+ 731:../Library/sdfat/sd_raw.c **** unsigned char sd_raw_sync()
+ 732:../Library/sdfat/sd_raw.c **** {
+ 868              		.loc 1 732 0
+ 869              		.cfi_startproc
+ 870              		@ Function supports interworking.
+ 871              		@ args = 0, pretend = 0, frame = 0
+ 872              		@ frame_needed = 0, uses_anonymous_args = 0
+ 873 0650 04E02DE5 		str	lr, [sp, #-4]!
+ 874              	.LCFI5:
+ 875              		.cfi_def_cfa_offset 4
+ 876              		.cfi_offset 14, -4
+ 733:../Library/sdfat/sd_raw.c ****     #if SD_RAW_WRITE_SUPPORT
+ 734:../Library/sdfat/sd_raw.c ****         #if SD_RAW_WRITE_BUFFERING
+ 735:../Library/sdfat/sd_raw.c ****         if(raw_block_written)
+ 877              		.loc 1 735 0
+ 878 0654 28109FE5 		ldr	r1, .L83
+ 879 0658 0430D1E5 		ldrb	r3, [r1, #4]	@ zero_extendqisi2
+ 880 065c 000053E3 		cmp	r3, #0
+ 736:../Library/sdfat/sd_raw.c ****             return 1;
+ 881              		.loc 1 736 0
+ 882 0660 0100A013 		movne	r0, #1
+ 735:../Library/sdfat/sd_raw.c ****         if(raw_block_written)
+ 883              		.loc 1 735 0
+ 884 0664 0400001A 		bne	.L81
+ 885              	.LBB9:
+ 886              	.LBB10:
+ 737:../Library/sdfat/sd_raw.c ****         if(!sd_raw_write(raw_block_address, raw_block, sizeof(raw_block)))
+ 887              		.loc 1 737 0
+ 888 0668 050091E4 		ldr	r0, [r1], #5
+ 889 066c 022CA0E3 		mov	r2, #512
+ 890 0670 FEFFFFEB 		bl	sd_raw_write
+ 738:../Library/sdfat/sd_raw.c ****             return 0;
+ 891              		.loc 1 738 0
+ 892 0674 000090E2 		adds	r0, r0, #0
+ 893 0678 0100A013 		movne	r0, #1
+ 894              	.L81:
+ 895              	.LBE10:
+ 896              	.LBE9:
+ 739:../Library/sdfat/sd_raw.c ****     #endif
+ 740:../Library/sdfat/sd_raw.c ****     return 1;
+ 741:../Library/sdfat/sd_raw.c ****     #else
+ 742:../Library/sdfat/sd_raw.c ****     return 0;
+ 743:../Library/sdfat/sd_raw.c ****     #endif
+ 744:../Library/sdfat/sd_raw.c **** }
+ 897              		.loc 1 744 0
+ 898 067c 04E09DE4 		ldr	lr, [sp], #4
+ 899 0680 1EFF2FE1 		bx	lr
+ 900              	.L84:
+ 901              		.align	2
+ 902              	.L83:
+ 903 0684 00000000 		.word	.LANCHOR0
+ 904              		.cfi_endproc
+ 905              	.LFE9:
+ 907              		.align	2
+ 908              		.global	sd_raw_get_info
+ 910              	sd_raw_get_info:
+ 911              	.LFB10:
+ 745:../Library/sdfat/sd_raw.c **** 
+ 746:../Library/sdfat/sd_raw.c **** /**
+ 747:../Library/sdfat/sd_raw.c ****  * \ingroup sd_raw
+ 748:../Library/sdfat/sd_raw.c ****  * Reads informational data from the card.
+ 749:../Library/sdfat/sd_raw.c ****  *
+ 750:../Library/sdfat/sd_raw.c ****  * This function reads and returns the card's registers
+ 751:../Library/sdfat/sd_raw.c ****  * containing manufacturing and status information.
+ 752:../Library/sdfat/sd_raw.c ****  *
+ 753:../Library/sdfat/sd_raw.c ****  * \note: The information retrieved by this function is
+ 754:../Library/sdfat/sd_raw.c ****  *        not required in any way to operate on the card,
+ 755:../Library/sdfat/sd_raw.c ****  *        but it might be nice to display some of the data
+ 756:../Library/sdfat/sd_raw.c ****  *        to the user.
+ 757:../Library/sdfat/sd_raw.c ****  *
+ 758:../Library/sdfat/sd_raw.c ****  * \param[in] info A pointer to the structure into which to save the information.
+ 759:../Library/sdfat/sd_raw.c ****  * \returns 0 on failure, 1 on success.
+ 760:../Library/sdfat/sd_raw.c ****  */
+ 761:../Library/sdfat/sd_raw.c **** unsigned char sd_raw_get_info(struct sd_raw_info* info)
+ 762:../Library/sdfat/sd_raw.c **** {
+ 912              		.loc 1 762 0
+ 913              		.cfi_startproc
+ 914              		@ Function supports interworking.
+ 915              		@ args = 0, pretend = 0, frame = 0
+ 916              		@ frame_needed = 0, uses_anonymous_args = 0
+ 917              	.LVL58:
+ 918 0688 F0452DE9 		stmfd	sp!, {r4, r5, r6, r7, r8, sl, lr}
+ 919              	.LCFI6:
+ 920              		.cfi_def_cfa_offset 28
+ 921              		.cfi_offset 14, -4
+ 922              		.cfi_offset 10, -8
+ 923              		.cfi_offset 8, -12
+ 924              		.cfi_offset 7, -16
+ 925              		.cfi_offset 6, -20
+ 926              		.cfi_offset 5, -24
+ 927              		.cfi_offset 4, -28
+ 763:../Library/sdfat/sd_raw.c ****     if(!info || !sd_raw_available())
+ 928              		.loc 1 763 0
+ 929 068c 004050E2 		subs	r4, r0, #0
+ 764:../Library/sdfat/sd_raw.c ****         return 0;
+ 930              		.loc 1 764 0
+ 931 0690 0400A001 		moveq	r0, r4
+ 932              	.LVL59:
+ 763:../Library/sdfat/sd_raw.c ****     if(!info || !sd_raw_available())
+ 933              		.loc 1 763 0
+ 934 0694 9100000A 		beq	.L86
+ 763:../Library/sdfat/sd_raw.c ****     if(!info || !sd_raw_available())
+ 935              		.loc 1 763 0 is_stmt 0 discriminator 1
+ 936 0698 FEFFFFEB 		bl	sd_raw_available
+ 937 069c 000050E3 		cmp	r0, #0
+ 938 06a0 8E00000A 		beq	.L86
+ 765:../Library/sdfat/sd_raw.c **** 
+ 766:../Library/sdfat/sd_raw.c ****     memset(info, 0, sizeof(*info));
+ 767:../Library/sdfat/sd_raw.c **** 
+ 768:../Library/sdfat/sd_raw.c ****     select_card();
+ 939              		.loc 1 768 0 is_stmt 1
+ 940 06a4 3C529FE5 		ldr	r5, .L122
+ 766:../Library/sdfat/sd_raw.c ****     memset(info, 0, sizeof(*info));
+ 941              		.loc 1 766 0
+ 942 06a8 0010A0E3 		mov	r1, #0
+ 943 06ac 1C20A0E3 		mov	r2, #28
+ 944 06b0 0400A0E1 		mov	r0, r4
+ 945 06b4 FEFFFFEB 		bl	memset
+ 946              		.loc 1 768 0
+ 947 06b8 0C3095E5 		ldr	r3, [r5, #12]
+ 948 06bc 803083E3 		orr	r3, r3, #128
+ 949 06c0 0C3085E5 		str	r3, [r5, #12]
+ 769:../Library/sdfat/sd_raw.c **** 
+ 770:../Library/sdfat/sd_raw.c ****     /* read cid register */
+ 771:../Library/sdfat/sd_raw.c ****     if(sd_raw_send_command_r1(CMD_SEND_CID, 0))
+ 950              		.loc 1 771 0
+ 951 06c4 0A00A0E3 		mov	r0, #10
+ 952 06c8 0010A0E3 		mov	r1, #0
+ 953 06cc 5DFEFFEB 		bl	sd_raw_send_command_r1
+ 954 06d0 000050E3 		cmp	r0, #0
+ 772:../Library/sdfat/sd_raw.c ****     {
+ 773:../Library/sdfat/sd_raw.c ****         unselect_card();
+ 955              		.loc 1 773 0
+ 956 06d4 04309515 		ldrne	r3, [r5, #4]
+ 957 06d8 80308313 		orrne	r3, r3, #128
+ 958 06dc 04308515 		strne	r3, [r5, #4]
+ 771:../Library/sdfat/sd_raw.c ****     if(sd_raw_send_command_r1(CMD_SEND_CID, 0))
+ 959              		.loc 1 771 0
+ 960 06e0 3B00001A 		bne	.L121
+ 961              	.L115:
+ 774:../Library/sdfat/sd_raw.c ****         return 0;
+ 775:../Library/sdfat/sd_raw.c ****     }
+ 776:../Library/sdfat/sd_raw.c ****     while(sd_raw_rec_byte() != 0xfe);
+ 962              		.loc 1 776 0 discriminator 1
+ 963 06e4 4CFEFFEB 		bl	sd_raw_rec_byte
+ 964 06e8 FE0050E3 		cmp	r0, #254
+ 965 06ec FCFFFF1A 		bne	.L115
+ 966              		.loc 1 776 0 is_stmt 0
+ 967 06f0 0460A0E1 		mov	r6, r4
+ 968 06f4 6070A0E3 		mov	r7, #96
+ 969 06f8 0050A0E3 		mov	r5, #0
+ 970              	.L97:
+ 971              	.LBB11:
+ 777:../Library/sdfat/sd_raw.c ****     unsigned char i;
+ 778:../Library/sdfat/sd_raw.c ****     for(i = 0; i < 18; ++i)
+ 779:../Library/sdfat/sd_raw.c ****     {
+ 780:../Library/sdfat/sd_raw.c ****         unsigned char b = sd_raw_rec_byte();
+ 972              		.loc 1 780 0 is_stmt 1
+ 973 06fc 46FEFFEB 		bl	sd_raw_rec_byte
+ 974              	.LVL60:
+ 781:../Library/sdfat/sd_raw.c **** 
+ 782:../Library/sdfat/sd_raw.c ****         switch(i)
+ 975              		.loc 1 782 0
+ 976 0700 0E0055E3 		cmp	r5, #14
+ 977 0704 05F19F97 		ldrls	pc, [pc, r5, asl #2]
+ 978 0708 220000EA 		b	.L88
+ 979              	.L96:
+ 980 070c 48070000 		.word	.L89
+ 981 0710 50070000 		.word	.L90
+ 982 0714 50070000 		.word	.L90
+ 983 0718 58070000 		.word	.L91
+ 984 071c 58070000 		.word	.L91
+ 985 0720 58070000 		.word	.L91
+ 986 0724 58070000 		.word	.L91
+ 987 0728 58070000 		.word	.L91
+ 988 072c 60070000 		.word	.L92
+ 989 0730 68070000 		.word	.L93
+ 990 0734 68070000 		.word	.L93
+ 991 0738 68070000 		.word	.L93
+ 992 073c 68070000 		.word	.L93
+ 993 0740 78070000 		.word	.L94
+ 994 0744 84070000 		.word	.L95
+ 995              	.L89:
+ 783:../Library/sdfat/sd_raw.c ****         {
+ 784:../Library/sdfat/sd_raw.c ****             case 0:
+ 785:../Library/sdfat/sd_raw.c ****                 info->manufacturer = b;
+ 996              		.loc 1 785 0
+ 997 0748 0000C4E5 		strb	r0, [r4, #0]
+ 786:../Library/sdfat/sd_raw.c ****                 break;
+ 998              		.loc 1 786 0
+ 999 074c 110000EA 		b	.L88
+ 1000              	.L90:
+ 787:../Library/sdfat/sd_raw.c ****             case 1:
+ 788:../Library/sdfat/sd_raw.c ****             case 2:
+ 789:../Library/sdfat/sd_raw.c ****                 info->oem[i - 1] = b;
+ 1001              		.loc 1 789 0
+ 1002 0750 0000C6E5 		strb	r0, [r6, #0]
+ 790:../Library/sdfat/sd_raw.c ****                 break;
+ 1003              		.loc 1 790 0
+ 1004 0754 0F0000EA 		b	.L88
+ 1005              	.L91:
+ 791:../Library/sdfat/sd_raw.c ****             case 3:
+ 792:../Library/sdfat/sd_raw.c ****             case 4:
+ 793:../Library/sdfat/sd_raw.c ****             case 5:
+ 794:../Library/sdfat/sd_raw.c ****             case 6:
+ 795:../Library/sdfat/sd_raw.c ****             case 7:
+ 796:../Library/sdfat/sd_raw.c ****                 info->product[i - 3] = b;
+ 1006              		.loc 1 796 0
+ 1007 0758 0100C6E5 		strb	r0, [r6, #1]
+ 797:../Library/sdfat/sd_raw.c ****                 break;
+ 1008              		.loc 1 797 0
+ 1009 075c 0D0000EA 		b	.L88
+ 1010              	.L92:
+ 798:../Library/sdfat/sd_raw.c ****             case 8:
+ 799:../Library/sdfat/sd_raw.c ****                 info->revision = b;
+ 1011              		.loc 1 799 0
+ 1012 0760 0A00C4E5 		strb	r0, [r4, #10]
+ 800:../Library/sdfat/sd_raw.c ****                 break;
+ 1013              		.loc 1 800 0
+ 1014 0764 0B0000EA 		b	.L88
+ 1015              	.L93:
+ 801:../Library/sdfat/sd_raw.c ****             case 9:
+ 802:../Library/sdfat/sd_raw.c ****             case 10:
+ 803:../Library/sdfat/sd_raw.c ****             case 11:
+ 804:../Library/sdfat/sd_raw.c ****             case 12:
+ 805:../Library/sdfat/sd_raw.c ****                 info->serial |= (unsigned int) b << ((12 - i) * 8);
+ 1016              		.loc 1 805 0
+ 1017 0768 0C3094E5 		ldr	r3, [r4, #12]
+ 1018 076c 100783E1 		orr	r0, r3, r0, asl r7
+ 1019              	.LVL61:
+ 1020 0770 0C0084E5 		str	r0, [r4, #12]
+ 806:../Library/sdfat/sd_raw.c ****                 break;
+ 1021              		.loc 1 806 0
+ 1022 0774 070000EA 		b	.L88
+ 1023              	.LVL62:
+ 1024              	.L94:
+ 807:../Library/sdfat/sd_raw.c ****             case 13:
+ 808:../Library/sdfat/sd_raw.c ****                 info->manufacturing_year = b << 4;
+ 1025              		.loc 1 808 0
+ 1026 0778 0002A0E1 		mov	r0, r0, asl #4
+ 1027              	.LVL63:
+ 1028 077c 1000C4E5 		strb	r0, [r4, #16]
+ 809:../Library/sdfat/sd_raw.c ****                 break;
+ 1029              		.loc 1 809 0
+ 1030 0780 040000EA 		b	.L88
+ 1031              	.LVL64:
+ 1032              	.L95:
+ 810:../Library/sdfat/sd_raw.c ****             case 14:
+ 811:../Library/sdfat/sd_raw.c ****                 info->manufacturing_year |= b >> 4;
+ 1033              		.loc 1 811 0
+ 1034 0784 1030D4E5 		ldrb	r3, [r4, #16]	@ zero_extendqisi2
+ 1035 0788 203283E1 		orr	r3, r3, r0, lsr #4
+ 812:../Library/sdfat/sd_raw.c ****                 info->manufacturing_month = b & 0x0f;
+ 1036              		.loc 1 812 0
+ 1037 078c 0F0000E2 		and	r0, r0, #15
+ 1038              	.LVL65:
+ 811:../Library/sdfat/sd_raw.c ****                 info->manufacturing_year |= b >> 4;
+ 1039              		.loc 1 811 0
+ 1040 0790 1030C4E5 		strb	r3, [r4, #16]
+ 1041              		.loc 1 812 0
+ 1042 0794 1100C4E5 		strb	r0, [r4, #17]
+ 1043              	.L88:
+ 1044              	.LBE11:
+ 778:../Library/sdfat/sd_raw.c ****     for(i = 0; i < 18; ++i)
+ 1045              		.loc 1 778 0
+ 1046 0798 015085E2 		add	r5, r5, #1
+ 1047 079c FF5005E2 		and	r5, r5, #255
+ 1048              	.LVL66:
+ 1049 07a0 120055E3 		cmp	r5, #18
+ 1050 07a4 016086E2 		add	r6, r6, #1
+ 1051 07a8 087047E2 		sub	r7, r7, #8
+ 1052 07ac D2FFFF1A 		bne	.L97
+ 1053              	.LVL67:
+ 813:../Library/sdfat/sd_raw.c ****                 break;
+ 814:../Library/sdfat/sd_raw.c ****         }
+ 815:../Library/sdfat/sd_raw.c ****     }
+ 816:../Library/sdfat/sd_raw.c **** 
+ 817:../Library/sdfat/sd_raw.c ****     /* read csd register */
+ 818:../Library/sdfat/sd_raw.c ****     unsigned char csd_read_bl_len = 0;
+ 819:../Library/sdfat/sd_raw.c ****     unsigned char csd_c_size_mult = 0;
+ 820:../Library/sdfat/sd_raw.c ****     unsigned short csd_c_size = 0;
+ 821:../Library/sdfat/sd_raw.c ****     if(sd_raw_send_command_r1(CMD_SEND_CSD, 0))
+ 1054              		.loc 1 821 0
+ 1055 07b0 0900A0E3 		mov	r0, #9
+ 1056 07b4 0010A0E3 		mov	r1, #0
+ 1057 07b8 22FEFFEB 		bl	sd_raw_send_command_r1
+ 1058 07bc 000050E3 		cmp	r0, #0
+ 1059 07c0 0500000A 		beq	.L114
+ 822:../Library/sdfat/sd_raw.c ****     {
+ 823:../Library/sdfat/sd_raw.c ****         unselect_card();
+ 1060              		.loc 1 823 0
+ 1061 07c4 1C319FE5 		ldr	r3, .L122
+ 1062 07c8 042093E5 		ldr	r2, [r3, #4]
+ 1063 07cc 802082E3 		orr	r2, r2, #128
+ 1064 07d0 042083E5 		str	r2, [r3, #4]
+ 1065              	.LVL68:
+ 1066              	.L121:
+ 824:../Library/sdfat/sd_raw.c ****         return 0;
+ 1067              		.loc 1 824 0
+ 1068 07d4 0000A0E3 		mov	r0, #0
+ 1069 07d8 400000EA 		b	.L86
+ 1070              	.LVL69:
+ 1071              	.L114:
+ 825:../Library/sdfat/sd_raw.c ****     }
+ 826:../Library/sdfat/sd_raw.c ****     while(sd_raw_rec_byte() != 0xfe);
+ 1072              		.loc 1 826 0 discriminator 1
+ 1073 07dc 0EFEFFEB 		bl	sd_raw_rec_byte
+ 1074 07e0 FE0050E3 		cmp	r0, #254
+ 1075 07e4 FCFFFF1A 		bne	.L114
+ 1076              		.loc 1 826 0 is_stmt 0
+ 1077 07e8 0050A0E3 		mov	r5, #0
+ 1078              	.LVL70:
+ 1079 07ec 0570A0E1 		mov	r7, r5
+ 1080 07f0 05A0A0E1 		mov	sl, r5
+ 1081 07f4 0560A0E1 		mov	r6, r5
+ 1082              	.LBB12:
+ 827:../Library/sdfat/sd_raw.c ****     for(i = 0; i < 18; ++i)
+ 828:../Library/sdfat/sd_raw.c ****     {
+ 829:../Library/sdfat/sd_raw.c ****         unsigned char b = sd_raw_rec_byte();
+ 830:../Library/sdfat/sd_raw.c **** 
+ 831:../Library/sdfat/sd_raw.c ****         switch(i)
+ 832:../Library/sdfat/sd_raw.c ****         {
+ 833:../Library/sdfat/sd_raw.c ****             case 5:
+ 834:../Library/sdfat/sd_raw.c ****                 csd_read_bl_len = b & 0x0f;
+ 835:../Library/sdfat/sd_raw.c ****                 break;
+ 836:../Library/sdfat/sd_raw.c ****             case 6:
+ 837:../Library/sdfat/sd_raw.c ****                 csd_c_size = (unsigned short) (b & 0x03) << 8;
+ 838:../Library/sdfat/sd_raw.c ****                 break;
+ 839:../Library/sdfat/sd_raw.c ****             case 7:
+ 840:../Library/sdfat/sd_raw.c ****                 csd_c_size |= b;
+ 841:../Library/sdfat/sd_raw.c ****                 csd_c_size <<= 2;
+ 842:../Library/sdfat/sd_raw.c ****                 break;
+ 843:../Library/sdfat/sd_raw.c ****             case 8:
+ 844:../Library/sdfat/sd_raw.c ****                 csd_c_size |= b >> 6;
+ 845:../Library/sdfat/sd_raw.c ****                 ++csd_c_size;
+ 846:../Library/sdfat/sd_raw.c ****                 break;
+ 847:../Library/sdfat/sd_raw.c ****             case 9:
+ 848:../Library/sdfat/sd_raw.c ****                 csd_c_size_mult = (b & 0x03) << 1;
+ 849:../Library/sdfat/sd_raw.c ****                 break;
+ 850:../Library/sdfat/sd_raw.c ****             case 10:
+ 851:../Library/sdfat/sd_raw.c ****                 csd_c_size_mult |= b >> 7;
+ 852:../Library/sdfat/sd_raw.c **** 
+ 853:../Library/sdfat/sd_raw.c ****                 info->capacity = (unsigned int) csd_c_size << (csd_c_size_mult + csd_read_bl_len + 
+ 854:../Library/sdfat/sd_raw.c **** 
+ 855:../Library/sdfat/sd_raw.c ****                 break;
+ 856:../Library/sdfat/sd_raw.c ****             case 14:
+ 857:../Library/sdfat/sd_raw.c ****                 if(b & 0x40)
+ 858:../Library/sdfat/sd_raw.c ****                     info->flag_copy = 1;
+ 859:../Library/sdfat/sd_raw.c ****                 if(b & 0x20)
+ 860:../Library/sdfat/sd_raw.c ****                     info->flag_write_protect = 1;
+ 861:../Library/sdfat/sd_raw.c ****                 if(b & 0x10)
+ 862:../Library/sdfat/sd_raw.c ****                     info->flag_write_protect_temp = 1;
+ 1083              		.loc 1 862 0 is_stmt 1
+ 1084 07f8 0180A0E3 		mov	r8, #1
+ 1085              	.LVL71:
+ 1086              	.L111:
+ 829:../Library/sdfat/sd_raw.c ****         unsigned char b = sd_raw_rec_byte();
+ 1087              		.loc 1 829 0
+ 1088 07fc 06FEFFEB 		bl	sd_raw_rec_byte
+ 1089              	.LVL72:
+ 831:../Library/sdfat/sd_raw.c ****         switch(i)
+ 1090              		.loc 1 831 0
+ 1091 0800 053046E2 		sub	r3, r6, #5
+ 1092 0804 090053E3 		cmp	r3, #9
+ 1093 0808 03F19F97 		ldrls	pc, [pc, r3, asl #2]
+ 1094 080c 2A0000EA 		b	.L99
+ 1095              	.L107:
+ 1096 0810 38080000 		.word	.L100
+ 1097 0814 40080000 		.word	.L101
+ 1098 0818 4C080000 		.word	.L102
+ 1099 081c 58080000 		.word	.L103
+ 1100 0820 70080000 		.word	.L104
+ 1101 0824 7C080000 		.word	.L105
+ 1102 0828 BC080000 		.word	.L99
+ 1103 082c BC080000 		.word	.L99
+ 1104 0830 BC080000 		.word	.L99
+ 1105 0834 98080000 		.word	.L106
+ 1106              	.L100:
+ 834:../Library/sdfat/sd_raw.c ****                 csd_read_bl_len = b & 0x0f;
+ 1107              		.loc 1 834 0
+ 1108 0838 0FA000E2 		and	sl, r0, #15
+ 1109              	.LVL73:
+ 835:../Library/sdfat/sd_raw.c ****                 break;
+ 1110              		.loc 1 835 0
+ 1111 083c 1E0000EA 		b	.L99
+ 1112              	.LVL74:
+ 1113              	.L101:
+ 837:../Library/sdfat/sd_raw.c ****                 csd_c_size = (unsigned short) (b & 0x03) << 8;
+ 1114              		.loc 1 837 0
+ 1115 0840 035000E2 		and	r5, r0, #3
+ 1116 0844 0554A0E1 		mov	r5, r5, asl #8
+ 1117              	.LVL75:
+ 838:../Library/sdfat/sd_raw.c ****                 break;
+ 1118              		.loc 1 838 0
+ 1119 0848 1B0000EA 		b	.L99
+ 1120              	.LVL76:
+ 1121              	.L102:
+ 840:../Library/sdfat/sd_raw.c ****                 csd_c_size |= b;
+ 1122              		.loc 1 840 0
+ 1123 084c 055080E1 		orr	r5, r0, r5
+ 1124              	.LVL77:
+ 841:../Library/sdfat/sd_raw.c ****                 csd_c_size <<= 2;
+ 1125              		.loc 1 841 0
+ 1126 0850 0559A0E1 		mov	r5, r5, asl #18
+ 1127              	.LVL78:
+ 1128 0854 030000EA 		b	.L120
+ 1129              	.L103:
+ 844:../Library/sdfat/sd_raw.c ****                 csd_c_size |= b >> 6;
+ 1130              		.loc 1 844 0
+ 1131 0858 0009A0E1 		mov	r0, r0, asl #18
+ 1132              	.LVL79:
+ 1133 085c 205C85E1 		orr	r5, r5, r0, lsr #24
+ 1134              	.LVL80:
+ 845:../Library/sdfat/sd_raw.c ****                 ++csd_c_size;
+ 1135              		.loc 1 845 0
+ 1136 0860 015085E2 		add	r5, r5, #1
+ 1137              	.LVL81:
+ 1138 0864 0558A0E1 		mov	r5, r5, asl #16
+ 1139              	.LVL82:
+ 1140              	.L120:
+ 1141 0868 2558A0E1 		mov	r5, r5, lsr #16
+ 1142              	.LVL83:
+ 846:../Library/sdfat/sd_raw.c ****                 break;
+ 1143              		.loc 1 846 0
+ 1144 086c 120000EA 		b	.L99
+ 1145              	.LVL84:
+ 1146              	.L104:
+ 848:../Library/sdfat/sd_raw.c ****                 csd_c_size_mult = (b & 0x03) << 1;
+ 1147              		.loc 1 848 0
+ 1148 0870 037000E2 		and	r7, r0, #3
+ 1149 0874 8770A0E1 		mov	r7, r7, asl #1
+ 1150              	.LVL85:
+ 849:../Library/sdfat/sd_raw.c ****                 break;
+ 1151              		.loc 1 849 0
+ 1152 0878 0F0000EA 		b	.L99
+ 1153              	.LVL86:
+ 1154              	.L105:
+ 851:../Library/sdfat/sd_raw.c ****                 csd_c_size_mult |= b >> 7;
+ 1155              		.loc 1 851 0
+ 1156 087c A07387E1 		orr	r7, r7, r0, lsr #7
+ 1157 0880 FF7007E2 		and	r7, r7, #255
+ 1158              	.LVL87:
+ 853:../Library/sdfat/sd_raw.c ****                 info->capacity = (unsigned int) csd_c_size << (csd_c_size_mult + csd_read_bl_len + 
+ 1159              		.loc 1 853 0
+ 1160 0884 0A3087E0 		add	r3, r7, sl
+ 1161 0888 023083E2 		add	r3, r3, #2
+ 1162 088c 1533A0E1 		mov	r3, r5, asl r3
+ 1163 0890 143084E5 		str	r3, [r4, #20]
+ 855:../Library/sdfat/sd_raw.c ****                 break;
+ 1164              		.loc 1 855 0
+ 1165 0894 080000EA 		b	.L99
+ 1166              	.LVL88:
+ 1167              	.L106:
+ 857:../Library/sdfat/sd_raw.c ****                 if(b & 0x40)
+ 1168              		.loc 1 857 0
+ 1169 0898 400010E3 		tst	r0, #64
+ 858:../Library/sdfat/sd_raw.c ****                     info->flag_copy = 1;
+ 1170              		.loc 1 858 0
+ 1171 089c 1880C415 		strneb	r8, [r4, #24]
+ 859:../Library/sdfat/sd_raw.c ****                 if(b & 0x20)
+ 1172              		.loc 1 859 0
+ 1173 08a0 200010E3 		tst	r0, #32
+ 860:../Library/sdfat/sd_raw.c ****                     info->flag_write_protect = 1;
+ 1174              		.loc 1 860 0
+ 1175 08a4 1980C415 		strneb	r8, [r4, #25]
+ 861:../Library/sdfat/sd_raw.c ****                 if(b & 0x10)
+ 1176              		.loc 1 861 0
+ 1177 08a8 100010E3 		tst	r0, #16
+ 863:../Library/sdfat/sd_raw.c ****                 info->format = (b & 0x0c) >> 2;
+ 1178              		.loc 1 863 0
+ 1179 08ac 0C0000E2 		and	r0, r0, #12
+ 1180              	.LVL89:
+ 1181 08b0 4001A0E1 		mov	r0, r0, asr #2
+ 862:../Library/sdfat/sd_raw.c ****                     info->flag_write_protect_temp = 1;
+ 1182              		.loc 1 862 0
+ 1183 08b4 1A80C415 		strneb	r8, [r4, #26]
+ 1184              		.loc 1 863 0
+ 1185 08b8 1B00C4E5 		strb	r0, [r4, #27]
+ 1186              	.L99:
+ 1187              	.LVL90:
+ 1188              	.LBE12:
+ 827:../Library/sdfat/sd_raw.c ****     for(i = 0; i < 18; ++i)
+ 1189              		.loc 1 827 0
+ 1190 08bc 016086E2 		add	r6, r6, #1
+ 1191 08c0 FF6006E2 		and	r6, r6, #255
+ 1192              	.LVL91:
+ 1193 08c4 120056E3 		cmp	r6, #18
+ 1194 08c8 CBFFFF1A 		bne	.L111
+ 864:../Library/sdfat/sd_raw.c ****                 break;
+ 865:../Library/sdfat/sd_raw.c ****         }
+ 866:../Library/sdfat/sd_raw.c ****     }
+ 867:../Library/sdfat/sd_raw.c **** 
+ 868:../Library/sdfat/sd_raw.c ****     unselect_card();
+ 1195              		.loc 1 868 0
+ 1196 08cc 14309FE5 		ldr	r3, .L122
+ 1197 08d0 042093E5 		ldr	r2, [r3, #4]
+ 1198 08d4 802082E3 		orr	r2, r2, #128
+ 1199 08d8 042083E5 		str	r2, [r3, #4]
+ 869:../Library/sdfat/sd_raw.c **** 
+ 870:../Library/sdfat/sd_raw.c ****     return 1;
+ 1200              		.loc 1 870 0
+ 1201 08dc 0100A0E3 		mov	r0, #1
+ 1202              	.LVL92:
+ 1203              	.L86:
+ 871:../Library/sdfat/sd_raw.c **** }
+ 1204              		.loc 1 871 0
+ 1205 08e0 F045BDE8 		ldmfd	sp!, {r4, r5, r6, r7, r8, sl, lr}
+ 1206 08e4 1EFF2FE1 		bx	lr
+ 1207              	.L123:
+ 1208              		.align	2
+ 1209              	.L122:
+ 1210 08e8 008002E0 		.word	-536707072
+ 1211              		.cfi_endproc
+ 1212              	.LFE10:
+ 1214              		.align	2
+ 1215              		.global	SDoff
+ 1217              	SDoff:
+ 1218              	.LFB11:
+ 872:../Library/sdfat/sd_raw.c **** 
+ 873:../Library/sdfat/sd_raw.c **** void SDoff(void)
+ 874:../Library/sdfat/sd_raw.c **** {
+ 1219              		.loc 1 874 0
+ 1220              		.cfi_startproc
+ 1221              		@ Function supports interworking.
+ 1222              		@ args = 0, pretend = 0, frame = 0
+ 1223              		@ frame_needed = 0, uses_anonymous_args = 0
+ 1224              		@ link register save eliminated.
+ 875:../Library/sdfat/sd_raw.c ****     SPI_SS_IODIR &= ~(1<<SPI_SS_PIN);
+ 1225              		.loc 1 875 0
+ 1226 08ec 1C309FE5 		ldr	r3, .L125
+ 1227 08f0 082093E5 		ldr	r2, [r3, #8]
+ 1228 08f4 8020C2E3 		bic	r2, r2, #128
+ 1229 08f8 082083E5 		str	r2, [r3, #8]
+ 876:../Library/sdfat/sd_raw.c ****     PINSEL0 &= ~(0x1500);
+ 1230              		.loc 1 876 0
+ 1231 08fc 013983E2 		add	r3, r3, #16384
+ 1232 0900 002093E5 		ldr	r2, [r3, #0]
+ 1233 0904 152CC2E3 		bic	r2, r2, #5376
+ 1234 0908 002083E5 		str	r2, [r3, #0]
+ 877:../Library/sdfat/sd_raw.c **** }
+ 1235              		.loc 1 877 0
+ 1236 090c 1EFF2FE1 		bx	lr
+ 1237              	.L126:
+ 1238              		.align	2
+ 1239              	.L125:
+ 1240 0910 008002E0 		.word	-536707072
+ 1241              		.cfi_endproc
+ 1242              	.LFE11:
+ 1244              		.align	2
+ 1245              		.global	SDon
+ 1247              	SDon:
+ 1248              	.LFB12:
+ 878:../Library/sdfat/sd_raw.c **** 
+ 879:../Library/sdfat/sd_raw.c **** void SDon(void)
+ 880:../Library/sdfat/sd_raw.c **** {
+ 1249              		.loc 1 880 0
+ 1250              		.cfi_startproc
+ 1251              		@ Function supports interworking.
+ 1252              		@ args = 0, pretend = 0, frame = 0
+ 1253              		@ frame_needed = 0, uses_anonymous_args = 0
+ 1254              		@ link register save eliminated.
+ 881:../Library/sdfat/sd_raw.c ****     SPI_SS_IODIR |= (1<<SPI_SS_PIN);
+ 1255              		.loc 1 881 0
+ 1256 0914 1C309FE5 		ldr	r3, .L128
+ 1257 0918 082093E5 		ldr	r2, [r3, #8]
+ 1258 091c 802082E3 		orr	r2, r2, #128
+ 1259 0920 082083E5 		str	r2, [r3, #8]
+ 882:../Library/sdfat/sd_raw.c ****     PINSEL0 |= (0x1500);
+ 1260              		.loc 1 882 0
+ 1261 0924 013983E2 		add	r3, r3, #16384
+ 1262 0928 002093E5 		ldr	r2, [r3, #0]
+ 1263 092c 152C82E3 		orr	r2, r2, #5376
+ 1264 0930 002083E5 		str	r2, [r3, #0]
+ 883:../Library/sdfat/sd_raw.c **** }
+ 1265              		.loc 1 883 0
+ 1266 0934 1EFF2FE1 		bx	lr
+ 1267              	.L129:
+ 1268              		.align	2
+ 1269              	.L128:
+ 1270 0938 008002E0 		.word	-536707072
+ 1271              		.cfi_endproc
+ 1272              	.LFE12:
+ 1274              		.align	2
+ 1275              		.global	format_card
+ 1277              	format_card:
+ 1278              	.LFB13:
+ 884:../Library/sdfat/sd_raw.c **** 
+ 885:../Library/sdfat/sd_raw.c **** //NES : 10-28-7 
+ 886:../Library/sdfat/sd_raw.c **** //Low-level formats a 512MB card
+ 887:../Library/sdfat/sd_raw.c **** //Assumes *many* things
+ 888:../Library/sdfat/sd_raw.c **** //You must pass this fuction 0xAA to get it to work (safety check)
+ 889:../Library/sdfat/sd_raw.c **** char format_card(char make_sure)
+ 890:../Library/sdfat/sd_raw.c **** {
+ 1279              		.loc 1 890 0
+ 1280              		.cfi_startproc
+ 1281              		@ Function supports interworking.
+ 1282              		@ args = 0, pretend = 0, frame = 512
+ 1283              		@ frame_needed = 0, uses_anonymous_args = 0
+ 1284              	.LVL93:
+ 1285 093c F0472DE9 		stmfd	sp!, {r4, r5, r6, r7, r8, r9, sl, lr}
+ 1286              	.LCFI7:
+ 1287              		.cfi_def_cfa_offset 32
+ 1288              		.cfi_offset 14, -4
+ 1289              		.cfi_offset 10, -8
+ 1290              		.cfi_offset 9, -12
+ 1291              		.cfi_offset 8, -16
+ 1292              		.cfi_offset 7, -20
+ 1293              		.cfi_offset 6, -24
+ 1294              		.cfi_offset 5, -28
+ 1295              		.cfi_offset 4, -32
+ 1296 0940 FF0000E2 		and	r0, r0, #255
+ 1297              	.LVL94:
+ 891:../Library/sdfat/sd_raw.c **** 	#define MBR_LOCATION	0x00
+ 892:../Library/sdfat/sd_raw.c **** 	#define BR_LOCATION		(MBR_LOCATION+0x80000)
+ 893:../Library/sdfat/sd_raw.c **** 	#define FAT_TABLE		(BR_LOCATION + (0x200 * 512))
+ 894:../Library/sdfat/sd_raw.c **** 	#define ROOT_DIR		(BR_LOCATION + (0x0200 * 512) + (0x00F5 * 2 * 512))
+ 895:../Library/sdfat/sd_raw.c **** 
+ 896:../Library/sdfat/sd_raw.c **** 	//Safety check
+ 897:../Library/sdfat/sd_raw.c **** 	if (make_sure != 0xAA) return 0;
+ 1298              		.loc 1 897 0
+ 1299 0944 AA0050E3 		cmp	r0, #170
+ 890:../Library/sdfat/sd_raw.c **** {
+ 1300              		.loc 1 890 0
+ 1301 0948 02DC4DE2 		sub	sp, sp, #512
+ 1302              	.LCFI8:
+ 1303              		.cfi_def_cfa_offset 544
+ 1304              		.loc 1 897 0
+ 1305 094c 0000A013 		movne	r0, #0
+ 1306 0950 6E00001A 		bne	.L131
+ 1307 0954 0040A0E3 		mov	r4, #0
+ 898:../Library/sdfat/sd_raw.c **** 	
+ 899:../Library/sdfat/sd_raw.c **** 	int i;
+ 900:../Library/sdfat/sd_raw.c **** 	unsigned char my_buff[512];
+ 901:../Library/sdfat/sd_raw.c **** 	for(i = 0 ; i < 512 ; i++) my_buff[i] = 0x00;
+ 1308              		.loc 1 901 0
+ 1309 0958 0430A0E1 		mov	r3, r4
+ 1310              	.L132:
+ 1311              		.loc 1 901 0 is_stmt 0 discriminator 2
+ 1312 095c 0D50A0E1 		mov	r5, sp
+ 1313 0960 0530C4E7 		strb	r3, [r4, r5]
+ 1314 0964 014084E2 		add	r4, r4, #1
+ 1315              	.LVL95:
+ 1316 0968 020C54E3 		cmp	r4, #512
+ 1317 096c FAFFFF1A 		bne	.L132
+ 902:../Library/sdfat/sd_raw.c **** 	
+ 903:../Library/sdfat/sd_raw.c **** 	//Init SD card interface
+ 904:../Library/sdfat/sd_raw.c **** 	sd_raw_init();
+ 1318              		.loc 1 904 0 is_stmt 1
+ 1319 0970 FEFFFFEB 		bl	sd_raw_init
+ 905:../Library/sdfat/sd_raw.c **** 
+ 906:../Library/sdfat/sd_raw.c **** 	//Erase Master Boot record
+ 907:../Library/sdfat/sd_raw.c **** 	sd_raw_sync();
+ 1320              		.loc 1 907 0
+ 1321 0974 FEFFFFEB 		bl	sd_raw_sync
+ 908:../Library/sdfat/sd_raw.c **** 	sd_raw_write(MBR_LOCATION, my_buff, 512);
+ 1322              		.loc 1 908 0
+ 1323 0978 0420A0E1 		mov	r2, r4
+ 1324 097c 0D10A0E1 		mov	r1, sp
+ 1325 0980 0000A0E3 		mov	r0, #0
+ 1326 0984 FEFFFFEB 		bl	sd_raw_write
+ 909:../Library/sdfat/sd_raw.c **** 
+ 910:../Library/sdfat/sd_raw.c **** 	//Erase Boot record
+ 911:../Library/sdfat/sd_raw.c **** 	sd_raw_sync();
+ 1327              		.loc 1 911 0
+ 1328 0988 FEFFFFEB 		bl	sd_raw_sync
+ 912:../Library/sdfat/sd_raw.c **** 	sd_raw_write(BR_LOCATION, my_buff, 512);
+ 1329              		.loc 1 912 0
+ 1330 098c 0420A0E1 		mov	r2, r4
+ 1331 0990 0207A0E3 		mov	r0, #524288
+ 1332 0994 0D10A0E1 		mov	r1, sp
+ 1333 0998 FEFFFFEB 		bl	sd_raw_write
+ 1334              	.LVL96:
+ 913:../Library/sdfat/sd_raw.c **** 
+ 914:../Library/sdfat/sd_raw.c **** 	//Erase FAT tables
+ 915:../Library/sdfat/sd_raw.c **** 	for(i = 0 ; i < 0x00F5 ; i++) //0x00F5 = 245 bytes : comes from byte 0x16 from Boot Record
+ 1335              		.loc 1 915 0
+ 1336 099c 78619FE5 		ldr	r6, .L137
+ 912:../Library/sdfat/sd_raw.c **** 	sd_raw_write(BR_LOCATION, my_buff, 512);
+ 1337              		.loc 1 912 0
+ 1338 09a0 0347A0E3 		mov	r4, #786432
+ 916:../Library/sdfat/sd_raw.c **** 	{
+ 917:../Library/sdfat/sd_raw.c **** 		sd_raw_sync();
+ 918:../Library/sdfat/sd_raw.c **** 		sd_raw_write( (FAT_TABLE + (i*512)), my_buff, 512);
+ 1339              		.loc 1 918 0
+ 1340 09a4 0D50A0E1 		mov	r5, sp
+ 1341              	.LVL97:
+ 1342              	.L133:
+ 917:../Library/sdfat/sd_raw.c **** 		sd_raw_sync();
+ 1343              		.loc 1 917 0 discriminator 2
+ 1344 09a8 FEFFFFEB 		bl	sd_raw_sync
+ 1345              		.loc 1 918 0 discriminator 2
+ 1346 09ac 0400A0E1 		mov	r0, r4
+ 1347 09b0 0D10A0E1 		mov	r1, sp
+ 1348 09b4 022CA0E3 		mov	r2, #512
+ 1349 09b8 024C84E2 		add	r4, r4, #512
+ 1350 09bc FEFFFFEB 		bl	sd_raw_write
+ 915:../Library/sdfat/sd_raw.c **** 	for(i = 0 ; i < 0x00F5 ; i++) //0x00F5 = 245 bytes : comes from byte 0x16 from Boot Record
+ 1351              		.loc 1 915 0 discriminator 2
+ 1352 09c0 060054E1 		cmp	r4, r6
+ 1353 09c4 F7FFFF1A 		bne	.L133
+ 919:../Library/sdfat/sd_raw.c **** 	}
+ 920:../Library/sdfat/sd_raw.c **** 	
+ 921:../Library/sdfat/sd_raw.c **** 	//Write Master Boot Record
+ 922:../Library/sdfat/sd_raw.c **** 	#define PART1	0x01BE
+ 923:../Library/sdfat/sd_raw.c **** 	my_buff[PART1 + 0] = 0x00;
+ 924:../Library/sdfat/sd_raw.c **** 	my_buff[PART1 + 1] = 0x00;
+ 925:../Library/sdfat/sd_raw.c **** 	my_buff[PART1 + 2] = 0x01;
+ 1354              		.loc 1 925 0
+ 1355 09c8 0130A0E3 		mov	r3, #1
+ 1356 09cc C031CDE5 		strb	r3, [sp, #448]
+ 926:../Library/sdfat/sd_raw.c **** 	my_buff[PART1 + 3] = 0x01;
+ 1357              		.loc 1 926 0
+ 1358 09d0 C131CDE5 		strb	r3, [sp, #449]
+ 927:../Library/sdfat/sd_raw.c **** 	my_buff[PART1 + 4] = 0x06;
+ 1359              		.loc 1 927 0
+ 1360 09d4 0630A0E3 		mov	r3, #6
+ 1361 09d8 C231CDE5 		strb	r3, [sp, #450]
+ 928:../Library/sdfat/sd_raw.c **** 	my_buff[PART1 + 5] = 0x1F;
+ 1362              		.loc 1 928 0
+ 1363 09dc 1F30A0E3 		mov	r3, #31
+ 1364 09e0 C331CDE5 		strb	r3, [sp, #451]
+ 929:../Library/sdfat/sd_raw.c **** 	my_buff[PART1 + 6] = 0xE0;
+ 1365              		.loc 1 929 0
+ 1366 09e4 1F30E0E3 		mvn	r3, #31
+ 923:../Library/sdfat/sd_raw.c **** 	my_buff[PART1 + 0] = 0x00;
+ 1367              		.loc 1 923 0
+ 1368 09e8 0090A0E3 		mov	r9, #0
+ 930:../Library/sdfat/sd_raw.c **** 	my_buff[PART1 + 7] = 0xD3;
+ 931:../Library/sdfat/sd_raw.c **** 	my_buff[PART1 + 8] = 0x00;
+ 932:../Library/sdfat/sd_raw.c **** 	my_buff[PART1 + 9] = 0x04;
+ 933:../Library/sdfat/sd_raw.c **** 	my_buff[PART1 + 10] = 0x00;
+ 934:../Library/sdfat/sd_raw.c **** 	my_buff[PART1 + 11] = 0x00;
+ 935:../Library/sdfat/sd_raw.c **** 	my_buff[PART1 + 12] = 0x00;
+ 936:../Library/sdfat/sd_raw.c **** 	my_buff[PART1 + 13] = 0x4C;
+ 937:../Library/sdfat/sd_raw.c **** 	my_buff[PART1 + 14] = 0x0F;
+ 938:../Library/sdfat/sd_raw.c **** 	my_buff[510] = 0x55;
+ 1369              		.loc 1 938 0
+ 1370 09ec 5540A0E3 		mov	r4, #85
+ 929:../Library/sdfat/sd_raw.c **** 	my_buff[PART1 + 6] = 0xE0;
+ 1371              		.loc 1 929 0
+ 1372 09f0 C431CDE5 		strb	r3, [sp, #452]
+ 932:../Library/sdfat/sd_raw.c **** 	my_buff[PART1 + 9] = 0x04;
+ 1373              		.loc 1 932 0
+ 1374 09f4 04A0A0E3 		mov	sl, #4
+ 930:../Library/sdfat/sd_raw.c **** 	my_buff[PART1 + 7] = 0xD3;
+ 1375              		.loc 1 930 0
+ 1376 09f8 2C30E0E3 		mvn	r3, #44
+ 936:../Library/sdfat/sd_raw.c **** 	my_buff[PART1 + 13] = 0x4C;
+ 1377              		.loc 1 936 0
+ 1378 09fc 4C80A0E3 		mov	r8, #76
+ 937:../Library/sdfat/sd_raw.c **** 	my_buff[PART1 + 14] = 0x0F;
+ 1379              		.loc 1 937 0
+ 1380 0a00 0F70A0E3 		mov	r7, #15
+ 939:../Library/sdfat/sd_raw.c **** 	my_buff[511] = 0xAA;
+ 1381              		.loc 1 939 0
+ 1382 0a04 5560E0E3 		mvn	r6, #85
+ 930:../Library/sdfat/sd_raw.c **** 	my_buff[PART1 + 7] = 0xD3;
+ 1383              		.loc 1 930 0
+ 1384 0a08 C531CDE5 		strb	r3, [sp, #453]
+ 923:../Library/sdfat/sd_raw.c **** 	my_buff[PART1 + 0] = 0x00;
+ 1385              		.loc 1 923 0
+ 1386 0a0c BE91CDE5 		strb	r9, [sp, #446]
+ 924:../Library/sdfat/sd_raw.c **** 	my_buff[PART1 + 1] = 0x00;
+ 1387              		.loc 1 924 0
+ 1388 0a10 BF91CDE5 		strb	r9, [sp, #447]
+ 931:../Library/sdfat/sd_raw.c **** 	my_buff[PART1 + 8] = 0x00;
+ 1389              		.loc 1 931 0
+ 1390 0a14 C691CDE5 		strb	r9, [sp, #454]
+ 932:../Library/sdfat/sd_raw.c **** 	my_buff[PART1 + 9] = 0x04;
+ 1391              		.loc 1 932 0
+ 1392 0a18 C7A1CDE5 		strb	sl, [sp, #455]
+ 933:../Library/sdfat/sd_raw.c **** 	my_buff[PART1 + 10] = 0x00;
+ 1393              		.loc 1 933 0
+ 1394 0a1c C891CDE5 		strb	r9, [sp, #456]
+ 934:../Library/sdfat/sd_raw.c **** 	my_buff[PART1 + 11] = 0x00;
+ 1395              		.loc 1 934 0
+ 1396 0a20 C991CDE5 		strb	r9, [sp, #457]
+ 935:../Library/sdfat/sd_raw.c **** 	my_buff[PART1 + 12] = 0x00;
+ 1397              		.loc 1 935 0
+ 1398 0a24 CA91CDE5 		strb	r9, [sp, #458]
+ 936:../Library/sdfat/sd_raw.c **** 	my_buff[PART1 + 13] = 0x4C;
+ 1399              		.loc 1 936 0
+ 1400 0a28 CB81CDE5 		strb	r8, [sp, #459]
+ 937:../Library/sdfat/sd_raw.c **** 	my_buff[PART1 + 14] = 0x0F;
+ 1401              		.loc 1 937 0
+ 1402 0a2c CC71CDE5 		strb	r7, [sp, #460]
+ 938:../Library/sdfat/sd_raw.c **** 	my_buff[510] = 0x55;
+ 1403              		.loc 1 938 0
+ 1404 0a30 FE41CDE5 		strb	r4, [sp, #510]
+ 1405              		.loc 1 939 0
+ 1406 0a34 FF61CDE5 		strb	r6, [sp, #511]
+ 940:../Library/sdfat/sd_raw.c **** 
+ 941:../Library/sdfat/sd_raw.c **** 	sd_raw_sync();
+ 1407              		.loc 1 941 0
+ 1408 0a38 FEFFFFEB 		bl	sd_raw_sync
+ 942:../Library/sdfat/sd_raw.c **** 	sd_raw_write(MBR_LOCATION, my_buff, 512);
+ 1409              		.loc 1 942 0
+ 1410 0a3c 0D10A0E1 		mov	r1, sp
+ 1411 0a40 022CA0E3 		mov	r2, #512
+ 1412 0a44 0900A0E1 		mov	r0, r9
+ 1413 0a48 FEFFFFEB 		bl	sd_raw_write
+ 943:../Library/sdfat/sd_raw.c **** 	sd_raw_sync();
+ 1414              		.loc 1 943 0
+ 1415 0a4c FEFFFFEB 		bl	sd_raw_sync
+ 944:../Library/sdfat/sd_raw.c **** 
+ 945:../Library/sdfat/sd_raw.c **** 	//Write Boot Record
+ 946:../Library/sdfat/sd_raw.c **** 	#define BOOTRECORD1	0x80000
+ 947:../Library/sdfat/sd_raw.c **** 	my_buff[0] = 0xEB;
+ 948:../Library/sdfat/sd_raw.c **** 	my_buff[1] = 0xFE;
+ 949:../Library/sdfat/sd_raw.c **** 	my_buff[2] = 0x90;
+ 950:../Library/sdfat/sd_raw.c **** 	my_buff[12] = 0x02;
+ 951:../Library/sdfat/sd_raw.c **** 	my_buff[13] = 0x10;
+ 1416              		.loc 1 951 0
+ 1417 0a50 1020A0E3 		mov	r2, #16
+ 947:../Library/sdfat/sd_raw.c **** 	my_buff[0] = 0xEB;
+ 1418              		.loc 1 947 0
+ 1419 0a54 1430E0E3 		mvn	r3, #20
+ 1420              		.loc 1 951 0
+ 1421 0a58 0D20CDE5 		strb	r2, [sp, #13]
+ 952:../Library/sdfat/sd_raw.c **** 	my_buff[14] = 0x16;
+ 1422              		.loc 1 952 0
+ 1423 0a5c 1620A0E3 		mov	r2, #22
+ 947:../Library/sdfat/sd_raw.c **** 	my_buff[0] = 0xEB;
+ 1424              		.loc 1 947 0
+ 1425 0a60 0030CDE5 		strb	r3, [sp, #0]
+ 1426              		.loc 1 952 0
+ 1427 0a64 0E20CDE5 		strb	r2, [sp, #14]
+ 948:../Library/sdfat/sd_raw.c **** 	my_buff[1] = 0xFE;
+ 1428              		.loc 1 948 0
+ 1429 0a68 0130E0E3 		mvn	r3, #1
+ 953:../Library/sdfat/sd_raw.c **** 	my_buff[16] = 0x02;
+ 954:../Library/sdfat/sd_raw.c **** 	my_buff[18] = 0x02;
+ 955:../Library/sdfat/sd_raw.c **** 	my_buff[21] = 0xF8;
+ 956:../Library/sdfat/sd_raw.c **** 	my_buff[22] = 0xF5;
+ 957:../Library/sdfat/sd_raw.c **** 	my_buff[24] = 0x20;
+ 958:../Library/sdfat/sd_raw.c **** 	my_buff[26] = 0x20;
+ 959:../Library/sdfat/sd_raw.c **** 	my_buff[29] = 0x04;
+ 960:../Library/sdfat/sd_raw.c **** 	my_buff[33] = 0x4C;
+ 961:../Library/sdfat/sd_raw.c **** 	my_buff[34] = 0x0F;
+ 962:../Library/sdfat/sd_raw.c **** 	my_buff[38] = 0x29;
+ 1430              		.loc 1 962 0
+ 1431 0a6c 2920A0E3 		mov	r2, #41
+ 948:../Library/sdfat/sd_raw.c **** 	my_buff[1] = 0xFE;
+ 1432              		.loc 1 948 0
+ 1433 0a70 0130CDE5 		strb	r3, [sp, #1]
+ 1434              		.loc 1 962 0
+ 1435 0a74 2620CDE5 		strb	r2, [sp, #38]
+ 949:../Library/sdfat/sd_raw.c **** 	my_buff[2] = 0x90;
+ 1436              		.loc 1 949 0
+ 1437 0a78 6F30E0E3 		mvn	r3, #111
+ 963:../Library/sdfat/sd_raw.c **** 	my_buff[54] = 0x46;
+ 1438              		.loc 1 963 0
+ 1439 0a7c 4620A0E3 		mov	r2, #70
+ 949:../Library/sdfat/sd_raw.c **** 	my_buff[2] = 0x90;
+ 1440              		.loc 1 949 0
+ 1441 0a80 0230CDE5 		strb	r3, [sp, #2]
+ 1442              		.loc 1 963 0
+ 1443 0a84 3620CDE5 		strb	r2, [sp, #54]
+ 950:../Library/sdfat/sd_raw.c **** 	my_buff[12] = 0x02;
+ 1444              		.loc 1 950 0
+ 1445 0a88 0230A0E3 		mov	r3, #2
+ 964:../Library/sdfat/sd_raw.c **** 	my_buff[55] = 0x41;
+ 1446              		.loc 1 964 0
+ 1447 0a8c 4120A0E3 		mov	r2, #65
+ 950:../Library/sdfat/sd_raw.c **** 	my_buff[12] = 0x02;
+ 1448              		.loc 1 950 0
+ 1449 0a90 0C30CDE5 		strb	r3, [sp, #12]
+ 953:../Library/sdfat/sd_raw.c **** 	my_buff[16] = 0x02;
+ 1450              		.loc 1 953 0
+ 1451 0a94 1030CDE5 		strb	r3, [sp, #16]
+ 954:../Library/sdfat/sd_raw.c **** 	my_buff[18] = 0x02;
+ 1452              		.loc 1 954 0
+ 1453 0a98 1230CDE5 		strb	r3, [sp, #18]
+ 1454              		.loc 1 964 0
+ 1455 0a9c 3720CDE5 		strb	r2, [sp, #55]
+ 955:../Library/sdfat/sd_raw.c **** 	my_buff[21] = 0xF8;
+ 1456              		.loc 1 955 0
+ 1457 0aa0 0730E0E3 		mvn	r3, #7
+ 965:../Library/sdfat/sd_raw.c **** 	my_buff[56] = 0x54;
+ 1458              		.loc 1 965 0
+ 1459 0aa4 5420A0E3 		mov	r2, #84
+ 955:../Library/sdfat/sd_raw.c **** 	my_buff[21] = 0xF8;
+ 1460              		.loc 1 955 0
+ 1461 0aa8 1530CDE5 		strb	r3, [sp, #21]
+ 1462              		.loc 1 965 0
+ 1463 0aac 3820CDE5 		strb	r2, [sp, #56]
+ 956:../Library/sdfat/sd_raw.c **** 	my_buff[22] = 0xF5;
+ 1464              		.loc 1 956 0
+ 1465 0ab0 0A30E0E3 		mvn	r3, #10
+ 966:../Library/sdfat/sd_raw.c **** 	my_buff[57] = 0x31;
+ 1466              		.loc 1 966 0
+ 1467 0ab4 3120A0E3 		mov	r2, #49
+ 956:../Library/sdfat/sd_raw.c **** 	my_buff[22] = 0xF5;
+ 1468              		.loc 1 956 0
+ 1469 0ab8 1630CDE5 		strb	r3, [sp, #22]
+ 1470              		.loc 1 966 0
+ 1471 0abc 3920CDE5 		strb	r2, [sp, #57]
+ 957:../Library/sdfat/sd_raw.c **** 	my_buff[24] = 0x20;
+ 1472              		.loc 1 957 0
+ 1473 0ac0 2030A0E3 		mov	r3, #32
+ 967:../Library/sdfat/sd_raw.c **** 	my_buff[58] = 0x36;
+ 1474              		.loc 1 967 0
+ 1475 0ac4 3620A0E3 		mov	r2, #54
+ 957:../Library/sdfat/sd_raw.c **** 	my_buff[24] = 0x20;
+ 1476              		.loc 1 957 0
+ 1477 0ac8 1830CDE5 		strb	r3, [sp, #24]
+ 958:../Library/sdfat/sd_raw.c **** 	my_buff[26] = 0x20;
+ 1478              		.loc 1 958 0
+ 1479 0acc 1A30CDE5 		strb	r3, [sp, #26]
+ 968:../Library/sdfat/sd_raw.c **** 	my_buff[59] = 0x20;
+ 1480              		.loc 1 968 0
+ 1481 0ad0 3B30CDE5 		strb	r3, [sp, #59]
+ 969:../Library/sdfat/sd_raw.c **** 	my_buff[60] = 0x20;
+ 1482              		.loc 1 969 0
+ 1483 0ad4 3C30CDE5 		strb	r3, [sp, #60]
+ 970:../Library/sdfat/sd_raw.c **** 	my_buff[61] = 0x20;
+ 1484              		.loc 1 970 0
+ 1485 0ad8 3D30CDE5 		strb	r3, [sp, #61]
+ 967:../Library/sdfat/sd_raw.c **** 	my_buff[58] = 0x36;
+ 1486              		.loc 1 967 0
+ 1487 0adc 3A20CDE5 		strb	r2, [sp, #58]
+ 959:../Library/sdfat/sd_raw.c **** 	my_buff[29] = 0x04;
+ 1488              		.loc 1 959 0
+ 1489 0ae0 1DA0CDE5 		strb	sl, [sp, #29]
+ 960:../Library/sdfat/sd_raw.c **** 	my_buff[33] = 0x4C;
+ 1490              		.loc 1 960 0
+ 1491 0ae4 2180CDE5 		strb	r8, [sp, #33]
+ 961:../Library/sdfat/sd_raw.c **** 	my_buff[34] = 0x0F;
+ 1492              		.loc 1 961 0
+ 1493 0ae8 2270CDE5 		strb	r7, [sp, #34]
+ 971:../Library/sdfat/sd_raw.c **** 	my_buff[510] = 0x55;
+ 1494              		.loc 1 971 0
+ 1495 0aec FE41CDE5 		strb	r4, [sp, #510]
+ 972:../Library/sdfat/sd_raw.c **** 	my_buff[511] = 0xAA;
+ 1496              		.loc 1 972 0
+ 1497 0af0 FF61CDE5 		strb	r6, [sp, #511]
+ 973:../Library/sdfat/sd_raw.c **** 	
+ 974:../Library/sdfat/sd_raw.c **** 	sd_raw_sync();
+ 1498              		.loc 1 974 0
+ 1499 0af4 FEFFFFEB 		bl	sd_raw_sync
+ 975:../Library/sdfat/sd_raw.c **** 	sd_raw_write(BR_LOCATION, my_buff, 512);
+ 1500              		.loc 1 975 0
+ 1501 0af8 0D10A0E1 		mov	r1, sp
+ 1502 0afc 022CA0E3 		mov	r2, #512
+ 1503 0b00 0207A0E3 		mov	r0, #524288
+ 1504 0b04 FEFFFFEB 		bl	sd_raw_write
+ 976:../Library/sdfat/sd_raw.c **** 	sd_raw_sync();
+ 1505              		.loc 1 976 0
+ 1506 0b08 FEFFFFEB 		bl	sd_raw_sync
+ 977:../Library/sdfat/sd_raw.c **** 	
+ 978:../Library/sdfat/sd_raw.c **** 	return(0x55); //Successful format
+ 1507              		.loc 1 978 0
+ 1508 0b0c 0400A0E1 		mov	r0, r4
+ 1509              	.L131:
+ 979:../Library/sdfat/sd_raw.c **** }
+ 1510              		.loc 1 979 0
+ 1511 0b10 02DC8DE2 		add	sp, sp, #512
+ 1512 0b14 F047BDE8 		ldmfd	sp!, {r4, r5, r6, r7, r8, r9, sl, lr}
+ 1513 0b18 1EFF2FE1 		bx	lr
+ 1514              	.L138:
+ 1515              		.align	2
+ 1516              	.L137:
+ 1517 0b1c 00EA0D00 		.word	911872
+ 1518              		.cfi_endproc
+ 1519              	.LFE13:
+ 1521              		.section	.rodata.str1.1,"aMS",%progbits,1
+ 1522              	.LC0:
+ 1523 0000 53442052 		.ascii	"SD RAW NOT AVAILABLE\012\015\000"
+ 1523      4157204E 
+ 1523      4F542041 
+ 1523      5641494C 
+ 1523      41424C45 
+ 1524              	.LC1:
+ 1525 0017 0A0D7265 		.ascii	"\012\015response: %d\012\015\000"
+ 1525      73706F6E 
+ 1525      73653A20 
+ 1525      25640A0D 
+ 1525      00
+ 1526              	.LC2:
+ 1527 0028 69203D20 		.ascii	"i = 0x7fff\012\015\000"
+ 1527      30783766 
+ 1527      66660A0D 
+ 1527      00
+ 1528              	.LC3:
+ 1529 0035 424C4F43 		.ascii	"BLOCK SIZE SET ERR \012\015\000"
+ 1529      4B205349 
+ 1529      5A452053 
+ 1529      45542045 
+ 1529      5252200A 
+ 1530              	.LC4:
+ 1531 004b 73645F72 		.ascii	"sd_raw_read borks\012\015\000"
+ 1531      61775F72 
+ 1531      65616420 
+ 1531      626F726B 
+ 1531      730A0D00 
+ 1532              		.bss
+ 1533              		.align	2
+ 1534              		.set	.LANCHOR0,. + 0
+ 1537              	raw_block_address:
+ 1538 0000 00000000 		.space	4
+ 1541              	raw_block_written:
+ 1542 0004 00       		.space	1
+ 1545              	raw_block:
+ 1546 0005 00000000 		.space	512
+ 1546      00000000 
+ 1546      00000000 
+ 1546      00000000 
+ 1546      00000000 
+ 1547 0205 000000   		.text
+ 1548              	.Letext0:
+ 1549              		.file 2 "../Library/sdfat/sd_raw.h"
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 sd_raw.c
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccjQSbXe.s:5      .text:0000000000000000 $a
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccjQSbXe.s:7      .text:0000000000000000 sd_raw_send_byte
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccjQSbXe.s:30     .text:0000000000000018 $d
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccjQSbXe.s:34     .text:000000000000001c $a
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccjQSbXe.s:36     .text:000000000000001c sd_raw_rec_byte
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccjQSbXe.s:62     .text:0000000000000044 $d
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccjQSbXe.s:66     .text:0000000000000048 $a
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccjQSbXe.s:68     .text:0000000000000048 sd_raw_send_command_r1
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccjQSbXe.s:136    .text:00000000000000bc sd_raw_available
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccjQSbXe.s:170    .text:00000000000000ec $d
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccjQSbXe.s:174    .text:00000000000000f0 $a
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccjQSbXe.s:177    .text:00000000000000f0 sd_raw_locked
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccjQSbXe.s:194    .text:00000000000000f8 sd_raw_write
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccjQSbXe.s:405    .text:000000000000028c sd_raw_read
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccjQSbXe.s:395    .text:000000000000027c $d
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccjQSbXe.s:402    .text:000000000000028c $a
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccjQSbXe.s:559    .text:00000000000003c4 $d
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccjQSbXe.s:565    .text:00000000000003d0 $a
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccjQSbXe.s:568    .text:00000000000003d0 sd_raw_read_interval
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccjQSbXe.s:661    .text:0000000000000480 sd_raw_init
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccjQSbXe.s:851    .text:000000000000062c $d
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccjQSbXe.s:863    .text:0000000000000650 $a
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccjQSbXe.s:866    .text:0000000000000650 sd_raw_sync
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccjQSbXe.s:903    .text:0000000000000684 $d
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccjQSbXe.s:907    .text:0000000000000688 $a
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccjQSbXe.s:910    .text:0000000000000688 sd_raw_get_info
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccjQSbXe.s:980    .text:000000000000070c $d
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccjQSbXe.s:997    .text:0000000000000748 $a
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccjQSbXe.s:1096   .text:0000000000000810 $d
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccjQSbXe.s:1108   .text:0000000000000838 $a
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccjQSbXe.s:1210   .text:00000000000008e8 $d
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccjQSbXe.s:1214   .text:00000000000008ec $a
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccjQSbXe.s:1217   .text:00000000000008ec SDoff
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccjQSbXe.s:1240   .text:0000000000000910 $d
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccjQSbXe.s:1244   .text:0000000000000914 $a
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccjQSbXe.s:1247   .text:0000000000000914 SDon
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccjQSbXe.s:1270   .text:0000000000000938 $d
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccjQSbXe.s:1274   .text:000000000000093c $a
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccjQSbXe.s:1277   .text:000000000000093c format_card
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccjQSbXe.s:1517   .text:0000000000000b1c $d
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccjQSbXe.s:1533   .bss:0000000000000000 $d
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccjQSbXe.s:1537   .bss:0000000000000000 raw_block_address
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccjQSbXe.s:1541   .bss:0000000000000004 raw_block_written
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccjQSbXe.s:1545   .bss:0000000000000005 raw_block
+                     .debug_frame:0000000000000010 $d
+
+UNDEFINED SYMBOLS
+memcpy
+rprintf
+memset

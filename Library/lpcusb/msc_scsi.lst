@@ -1,0 +1,890 @@
+   1              		.file	"msc_scsi.c"
+   2              		.text
+   3              	.Ltext0:
+   4              		.cfi_sections	.debug_frame
+   5              		.align	2
+   6              		.global	SCSIReset
+   8              	SCSIReset:
+   9              	.LFB0:
+  10              		.file 1 "../Library/lpcusb/msc_scsi.c"
+   1:../Library/lpcusb/msc_scsi.c **** /*
+   2:../Library/lpcusb/msc_scsi.c ****     LPCUSB, an USB device driver for LPC microcontrollers
+   3:../Library/lpcusb/msc_scsi.c ****     Copyright (C) 2006 Bertrik Sikken (bertrik@sikken.nl)
+   4:../Library/lpcusb/msc_scsi.c **** 
+   5:../Library/lpcusb/msc_scsi.c ****     This library is free software; you can redistribute it and/or
+   6:../Library/lpcusb/msc_scsi.c ****     modify it under the terms of the GNU Lesser General Public
+   7:../Library/lpcusb/msc_scsi.c ****     License as published by the Free Software Foundation; either
+   8:../Library/lpcusb/msc_scsi.c ****     version 2.1 of the License, or (at your option) any later version.
+   9:../Library/lpcusb/msc_scsi.c **** 
+  10:../Library/lpcusb/msc_scsi.c ****     This library is distributed in the hope that it will be useful,
+  11:../Library/lpcusb/msc_scsi.c ****     but WITHOUT ANY WARRANTY; without even the implied warranty of
+  12:../Library/lpcusb/msc_scsi.c ****     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+  13:../Library/lpcusb/msc_scsi.c ****     Lesser General Public License for more details.
+  14:../Library/lpcusb/msc_scsi.c **** 
+  15:../Library/lpcusb/msc_scsi.c ****     You should have received a copy of the GNU Lesser General Public
+  16:../Library/lpcusb/msc_scsi.c ****     License along with this library; if not, write to the Free Software
+  17:../Library/lpcusb/msc_scsi.c ****     Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+  18:../Library/lpcusb/msc_scsi.c **** */
+  19:../Library/lpcusb/msc_scsi.c **** 
+  20:../Library/lpcusb/msc_scsi.c **** /*
+  21:../Library/lpcusb/msc_scsi.c ****     This is the SCSI layer of the USB mass storage application example.
+  22:../Library/lpcusb/msc_scsi.c ****     This layer depends directly on the blockdev layer.
+  23:../Library/lpcusb/msc_scsi.c **** */
+  24:../Library/lpcusb/msc_scsi.c **** 
+  25:../Library/lpcusb/msc_scsi.c **** 
+  26:../Library/lpcusb/msc_scsi.c **** #include <string.h>     // memcpy
+  27:../Library/lpcusb/msc_scsi.c **** 
+  28:../Library/lpcusb/msc_scsi.c **** #include "type.h"
+  29:../Library/lpcusb/msc_scsi.c **** #include "usbdebug.h"
+  30:../Library/lpcusb/msc_scsi.c **** #include <stdio.h>
+  31:../Library/lpcusb/msc_scsi.c **** #include "rprintf.h"
+  32:../Library/lpcusb/msc_scsi.c **** 
+  33:../Library/lpcusb/msc_scsi.c **** #include "blockdev.h"
+  34:../Library/lpcusb/msc_scsi.c **** #include "msc_scsi.h"
+  35:../Library/lpcusb/msc_scsi.c **** 
+  36:../Library/lpcusb/msc_scsi.c **** #undef MIN
+  37:../Library/lpcusb/msc_scsi.c **** #define MIN(x,y)	((x)<(y)?(x):(y))	/**< MIN */
+  38:../Library/lpcusb/msc_scsi.c **** 
+  39:../Library/lpcusb/msc_scsi.c **** #define BLOCKSIZE       512
+  40:../Library/lpcusb/msc_scsi.c **** 
+  41:../Library/lpcusb/msc_scsi.c **** // SCSI commands
+  42:../Library/lpcusb/msc_scsi.c **** #define SCSI_CMD_TEST_UNIT_READY    0x00
+  43:../Library/lpcusb/msc_scsi.c **** #define SCSI_CMD_REQUEST_SENSE      0x03
+  44:../Library/lpcusb/msc_scsi.c **** #define SCSI_CMD_INQUIRY            0x12
+  45:../Library/lpcusb/msc_scsi.c **** #define SCSI_CMD_READ_CAPACITY      0x25
+  46:../Library/lpcusb/msc_scsi.c **** #define SCSI_CMD_READ_10            0x28
+  47:../Library/lpcusb/msc_scsi.c **** #define SCSI_CMD_WRITE_10           0x2A
+  48:../Library/lpcusb/msc_scsi.c **** 
+  49:../Library/lpcusb/msc_scsi.c **** // sense code
+  50:../Library/lpcusb/msc_scsi.c **** #define WRITE_ERROR             0x030C00
+  51:../Library/lpcusb/msc_scsi.c **** #define READ_ERROR              0x031100
+  52:../Library/lpcusb/msc_scsi.c **** #define INVALID_CMD_OPCODE      0x052000
+  53:../Library/lpcusb/msc_scsi.c **** #define INVALID_FIELD_IN_CDB    0x052400
+  54:../Library/lpcusb/msc_scsi.c **** 
+  55:../Library/lpcusb/msc_scsi.c **** //  Sense code, which is set on error conditions
+  56:../Library/lpcusb/msc_scsi.c **** static U32          dwSense;    // hex: 00aabbcc, where aa=KEY, bb=ASC, cc=ASCQ
+  57:../Library/lpcusb/msc_scsi.c **** 
+  58:../Library/lpcusb/msc_scsi.c **** static const U8     abInquiry[] =
+  59:../Library/lpcusb/msc_scsi.c **** {
+  60:../Library/lpcusb/msc_scsi.c ****     0x00,       // PDT = direct-access device
+  61:../Library/lpcusb/msc_scsi.c ****     0x80,       // removeable medium bit = set
+  62:../Library/lpcusb/msc_scsi.c ****     0x04,       // version = complies to SPC2r20
+  63:../Library/lpcusb/msc_scsi.c ****     0x02,       // response data format = SPC2r20
+  64:../Library/lpcusb/msc_scsi.c ****     0x1F,       // additional length
+  65:../Library/lpcusb/msc_scsi.c ****     0x00,
+  66:../Library/lpcusb/msc_scsi.c ****     0x00,
+  67:../Library/lpcusb/msc_scsi.c ****     0x00,
+  68:../Library/lpcusb/msc_scsi.c ****     'L','P','C','U','S','B',' ',' ',    // vendor
+  69:../Library/lpcusb/msc_scsi.c ****     'M','a','s','s',' ','s','t','o',    // product
+  70:../Library/lpcusb/msc_scsi.c ****     'r','a','g','e',' ',' ',' ',' ',
+  71:../Library/lpcusb/msc_scsi.c ****     '0','.','1',' '                     // revision
+  72:../Library/lpcusb/msc_scsi.c **** };
+  73:../Library/lpcusb/msc_scsi.c **** 
+  74:../Library/lpcusb/msc_scsi.c **** //  Data for "request sense" command. The 0xFF are filled in later
+  75:../Library/lpcusb/msc_scsi.c **** static const U8 abSense[] =
+  76:../Library/lpcusb/msc_scsi.c **** {
+  77:../Library/lpcusb/msc_scsi.c ****     0x70, 0x00, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x0A,
+  78:../Library/lpcusb/msc_scsi.c ****     0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00,
+  79:../Library/lpcusb/msc_scsi.c ****     0x00, 0x00
+  80:../Library/lpcusb/msc_scsi.c **** };
+  81:../Library/lpcusb/msc_scsi.c **** 
+  82:../Library/lpcusb/msc_scsi.c **** //  Buffer for holding one block of disk data
+  83:../Library/lpcusb/msc_scsi.c **** static U8 abBlockBuf[512];
+  84:../Library/lpcusb/msc_scsi.c **** 
+  85:../Library/lpcusb/msc_scsi.c **** 
+  86:../Library/lpcusb/msc_scsi.c **** typedef struct
+  87:../Library/lpcusb/msc_scsi.c **** {
+  88:../Library/lpcusb/msc_scsi.c ****     U8      bOperationCode;
+  89:../Library/lpcusb/msc_scsi.c ****     U8      abLBA[3];
+  90:../Library/lpcusb/msc_scsi.c ****     U8      bLength;
+  91:../Library/lpcusb/msc_scsi.c ****     U8      bControl;
+  92:../Library/lpcusb/msc_scsi.c **** }
+  93:../Library/lpcusb/msc_scsi.c **** TCDB6;
+  94:../Library/lpcusb/msc_scsi.c **** 
+  95:../Library/lpcusb/msc_scsi.c **** 
+  96:../Library/lpcusb/msc_scsi.c **** /*************************************************************************
+  97:../Library/lpcusb/msc_scsi.c ****     SCSIReset
+  98:../Library/lpcusb/msc_scsi.c ****     =========
+  99:../Library/lpcusb/msc_scsi.c ****         Resets any SCSI state
+ 100:../Library/lpcusb/msc_scsi.c **** 
+ 101:../Library/lpcusb/msc_scsi.c **** **************************************************************************/
+ 102:../Library/lpcusb/msc_scsi.c **** void SCSIReset(void)
+ 103:../Library/lpcusb/msc_scsi.c **** {
+  11              		.loc 1 103 0
+  12              		.cfi_startproc
+  13              		@ Function supports interworking.
+  14              		@ args = 0, pretend = 0, frame = 0
+  15              		@ frame_needed = 0, uses_anonymous_args = 0
+  16              		@ link register save eliminated.
+ 104:../Library/lpcusb/msc_scsi.c ****     dwSense = 0;
+  17              		.loc 1 104 0
+  18 0000 08309FE5 		ldr	r3, .L2
+  19 0004 0020A0E3 		mov	r2, #0
+  20 0008 002083E5 		str	r2, [r3, #0]
+ 105:../Library/lpcusb/msc_scsi.c **** }
+  21              		.loc 1 105 0
+  22 000c 1EFF2FE1 		bx	lr
+  23              	.L3:
+  24              		.align	2
+  25              	.L2:
+  26 0010 00000000 		.word	.LANCHOR0
+  27              		.cfi_endproc
+  28              	.LFE0:
+  30              		.align	2
+  31              		.global	SCSIHandleCmd
+  33              	SCSIHandleCmd:
+  34              	.LFB1:
+ 106:../Library/lpcusb/msc_scsi.c **** 
+ 107:../Library/lpcusb/msc_scsi.c **** 
+ 108:../Library/lpcusb/msc_scsi.c **** /*************************************************************************
+ 109:../Library/lpcusb/msc_scsi.c ****     SCSIHandleCmd
+ 110:../Library/lpcusb/msc_scsi.c ****     =============
+ 111:../Library/lpcusb/msc_scsi.c ****         Verifies a SCSI CDB and indicates the direction and amount of data
+ 112:../Library/lpcusb/msc_scsi.c ****         that the device wants to transfer.
+ 113:../Library/lpcusb/msc_scsi.c **** 
+ 114:../Library/lpcusb/msc_scsi.c ****     If this call fails, a sense code is set in dwSense.
+ 115:../Library/lpcusb/msc_scsi.c **** 
+ 116:../Library/lpcusb/msc_scsi.c ****     IN      pbCDB       Command data block
+ 117:../Library/lpcusb/msc_scsi.c ****             iCDBLen     Command data block len
+ 118:../Library/lpcusb/msc_scsi.c ****     OUT     *piRspLen   Length of intended response data:
+ 119:../Library/lpcusb/msc_scsi.c ****             *pfDevIn    TRUE if data is transferred from device-to-host
+ 120:../Library/lpcusb/msc_scsi.c **** 
+ 121:../Library/lpcusb/msc_scsi.c ****     Returns a pointer to the data exchange buffer if successful,
+ 122:../Library/lpcusb/msc_scsi.c ****     return NULL otherwise.
+ 123:../Library/lpcusb/msc_scsi.c **** **************************************************************************/
+ 124:../Library/lpcusb/msc_scsi.c **** U8 * SCSIHandleCmd(U8 *pbCDB, int iCDBLen, int *piRspLen, BOOL *pfDevIn)
+ 125:../Library/lpcusb/msc_scsi.c **** {
+  35              		.loc 1 125 0
+  36              		.cfi_startproc
+  37              		@ Function supports interworking.
+  38              		@ args = 0, pretend = 0, frame = 8
+  39              		@ frame_needed = 0, uses_anonymous_args = 0
+  40              	.LVL0:
+  41 0014 F3412DE9 		stmfd	sp!, {r0, r1, r4, r5, r6, r7, r8, lr}
+  42              	.LCFI0:
+  43              		.cfi_def_cfa_offset 32
+  44              		.cfi_offset 14, -4
+  45              		.cfi_offset 8, -8
+  46              		.cfi_offset 7, -12
+  47              		.cfi_offset 6, -16
+  48              		.cfi_offset 5, -20
+  49              		.cfi_offset 4, -24
+  50              		.cfi_offset 1, -28
+  51              		.cfi_offset 0, -32
+  52              	.LVL1:
+  53              		.loc 1 125 0
+  54 0018 0050A0E1 		mov	r5, r0
+ 126:../Library/lpcusb/msc_scsi.c ****     int     i;
+ 127:../Library/lpcusb/msc_scsi.c ****     TCDB6   *pCDB;
+ 128:../Library/lpcusb/msc_scsi.c ****     U32     dwLen, dwLBA;
+ 129:../Library/lpcusb/msc_scsi.c **** 
+ 130:../Library/lpcusb/msc_scsi.c **** 	//pCDB = (TCDB6 *)pbCDB;
+ 131:../Library/lpcusb/msc_scsi.c **** 	//Compiler warning fix
+ 132:../Library/lpcusb/msc_scsi.c ****     TCDB6 cdb;
+ 133:../Library/lpcusb/msc_scsi.c **** 	pCDB = &cdb;
+ 134:../Library/lpcusb/msc_scsi.c **** 	memcpy(pCDB, pbCDB, sizeof(TCDB6));
+  55              		.loc 1 134 0
+  56 001c 0880A0E3 		mov	r8, #8
+ 125:../Library/lpcusb/msc_scsi.c **** {
+  57              		.loc 1 125 0
+  58 0020 0160A0E1 		mov	r6, r1
+  59 0024 0240A0E1 		mov	r4, r2
+  60              		.loc 1 134 0
+  61 0028 0D00A0E1 		mov	r0, sp
+  62              	.LVL2:
+  63 002c 0510A0E1 		mov	r1, r5
+  64              	.LVL3:
+  65 0030 0820A0E1 		mov	r2, r8
+  66              	.LVL4:
+ 125:../Library/lpcusb/msc_scsi.c **** {
+  67              		.loc 1 125 0
+  68 0034 0370A0E1 		mov	r7, r3
+  69              		.loc 1 134 0
+  70 0038 FEFFFFEB 		bl	memcpy
+  71              	.LVL5:
+ 135:../Library/lpcusb/msc_scsi.c **** 	
+ 136:../Library/lpcusb/msc_scsi.c ****     // default direction is from device to host
+ 137:../Library/lpcusb/msc_scsi.c ****     *pfDevIn = TRUE;
+  72              		.loc 1 137 0
+  73 003c 0130A0E3 		mov	r3, #1
+  74 0040 003087E5 		str	r3, [r7, #0]
+ 138:../Library/lpcusb/msc_scsi.c **** 
+ 139:../Library/lpcusb/msc_scsi.c ****     switch (pCDB->bOperationCode)
+  75              		.loc 1 139 0
+  76 0044 0030DDE5 		ldrb	r3, [sp, #0]	@ zero_extendqisi2
+  77 0048 120053E3 		cmp	r3, #18
+  78 004c 1000000A 		beq	.L8
+  79 0050 0400008A 		bhi	.L12
+  80 0054 000053E3 		cmp	r3, #0
+  81 0058 1000000A 		beq	.L21
+  82 005c 030053E3 		cmp	r3, #3
+  83 0060 2400001A 		bne	.L5
+  84 0064 060000EA 		b	.L22
+  85              	.L12:
+  86 0068 280053E3 		cmp	r3, #40
+  87 006c 0F00000A 		beq	.L10
+  88 0070 2A0053E3 		cmp	r3, #42
+  89 0074 1400000A 		beq	.L11
+  90 0078 250053E3 		cmp	r3, #37
+  91 007c 1D00001A 		bne	.L5
+  92 0080 080000EA 		b	.L23
+  93              	.L22:
+ 140:../Library/lpcusb/msc_scsi.c ****     {
+ 141:../Library/lpcusb/msc_scsi.c **** 
+ 142:../Library/lpcusb/msc_scsi.c ****         // test unit ready (6)
+ 143:../Library/lpcusb/msc_scsi.c ****         case SCSI_CMD_TEST_UNIT_READY:
+ 144:../Library/lpcusb/msc_scsi.c ****             DBG("TEST UNIT READY\n");
+ 145:../Library/lpcusb/msc_scsi.c ****             *piRspLen = 0;
+ 146:../Library/lpcusb/msc_scsi.c ****             break;
+ 147:../Library/lpcusb/msc_scsi.c **** 
+ 148:../Library/lpcusb/msc_scsi.c ****         // request sense (6)
+ 149:../Library/lpcusb/msc_scsi.c ****         case SCSI_CMD_REQUEST_SENSE:
+ 150:../Library/lpcusb/msc_scsi.c ****             DBG("REQUEST SENSE (%06X)\n", dwSense);
+ 151:../Library/lpcusb/msc_scsi.c ****             // check params
+ 152:../Library/lpcusb/msc_scsi.c ****             *piRspLen = MIN(18, pCDB->bLength);
+  94              		.loc 1 152 0
+  95 0084 0430DDE5 		ldrb	r3, [sp, #4]	@ zero_extendqisi2
+  96 0088 120053E3 		cmp	r3, #18
+  97 008c 1230A023 		movcs	r3, #18
+  98 0090 020000EA 		b	.L21
+  99              	.L8:
+ 153:../Library/lpcusb/msc_scsi.c ****             break;
+ 154:../Library/lpcusb/msc_scsi.c **** 
+ 155:../Library/lpcusb/msc_scsi.c ****         // inquiry (6)
+ 156:../Library/lpcusb/msc_scsi.c ****         case SCSI_CMD_INQUIRY:
+ 157:../Library/lpcusb/msc_scsi.c ****             DBG("INQUIRY\n");
+ 158:../Library/lpcusb/msc_scsi.c ****             // see SPC20r20, 4.3.4.6
+ 159:../Library/lpcusb/msc_scsi.c ****             *piRspLen = MIN(36, pCDB->bLength);
+ 100              		.loc 1 159 0
+ 101 0094 0430DDE5 		ldrb	r3, [sp, #4]	@ zero_extendqisi2
+ 102 0098 240053E3 		cmp	r3, #36
+ 103 009c 2430A023 		movcs	r3, #36
+ 104              	.L21:
+ 105 00a0 003084E5 		str	r3, [r4, #0]
+ 106 00a4 110000EA 		b	.L20
+ 107              	.L23:
+ 160:../Library/lpcusb/msc_scsi.c ****             break;
+ 161:../Library/lpcusb/msc_scsi.c **** 
+ 162:../Library/lpcusb/msc_scsi.c ****         // read capacity (10)
+ 163:../Library/lpcusb/msc_scsi.c ****         case SCSI_CMD_READ_CAPACITY:
+ 164:../Library/lpcusb/msc_scsi.c ****             DBG("READ CAPACITY\n");
+ 165:../Library/lpcusb/msc_scsi.c ****             *piRspLen = 8;
+ 108              		.loc 1 165 0
+ 109 00a8 008084E5 		str	r8, [r4, #0]
+ 110 00ac 0F0000EA 		b	.L20
+ 111              	.L10:
+ 166:../Library/lpcusb/msc_scsi.c ****             break;
+ 167:../Library/lpcusb/msc_scsi.c **** 
+ 168:../Library/lpcusb/msc_scsi.c ****         // read (10)
+ 169:../Library/lpcusb/msc_scsi.c ****         case SCSI_CMD_READ_10:
+ 170:../Library/lpcusb/msc_scsi.c ****             if (iCDBLen != 10)
+ 112              		.loc 1 170 0
+ 113 00b0 0A0056E3 		cmp	r6, #10
+ 114 00b4 1500001A 		bne	.L19
+ 115              	.LVL6:
+ 171:../Library/lpcusb/msc_scsi.c ****             {
+ 172:../Library/lpcusb/msc_scsi.c ****                 return NULL;
+ 173:../Library/lpcusb/msc_scsi.c ****             }
+ 174:../Library/lpcusb/msc_scsi.c ****             dwLBA = (pbCDB[2] << 24) | (pbCDB[3] << 16) | (pbCDB[4] << 8) | (pbCDB[5]);
+ 175:../Library/lpcusb/msc_scsi.c ****             dwLen = (pbCDB[7] << 8) | pbCDB[8];
+ 116              		.loc 1 175 0
+ 117 00b8 0720D5E5 		ldrb	r2, [r5, #7]	@ zero_extendqisi2
+ 118 00bc 0830D5E5 		ldrb	r3, [r5, #8]	@ zero_extendqisi2
+ 119 00c0 023483E1 		orr	r3, r3, r2, asl #8
+ 176:../Library/lpcusb/msc_scsi.c ****             DBG("READ10, LBA=%d, len=%d\n", dwLBA, dwLen);
+ 177:../Library/lpcusb/msc_scsi.c ****             *piRspLen = dwLen * BLOCKSIZE;
+ 120              		.loc 1 177 0
+ 121 00c4 8334A0E1 		mov	r3, r3, asl #9
+ 122 00c8 F4FFFFEA 		b	.L21
+ 123              	.LVL7:
+ 124              	.L11:
+ 178:../Library/lpcusb/msc_scsi.c ****             break;
+ 179:../Library/lpcusb/msc_scsi.c **** 
+ 180:../Library/lpcusb/msc_scsi.c ****         // write (10)
+ 181:../Library/lpcusb/msc_scsi.c ****         case SCSI_CMD_WRITE_10:
+ 182:../Library/lpcusb/msc_scsi.c ****             if (iCDBLen != 10)
+ 125              		.loc 1 182 0
+ 126 00cc 0A0056E3 		cmp	r6, #10
+ 127 00d0 0E00001A 		bne	.L19
+ 128              	.LVL8:
+ 183:../Library/lpcusb/msc_scsi.c ****             {
+ 184:../Library/lpcusb/msc_scsi.c ****                 return NULL;
+ 185:../Library/lpcusb/msc_scsi.c ****             }
+ 186:../Library/lpcusb/msc_scsi.c ****             dwLBA = (pbCDB[2] << 24) | (pbCDB[3] << 16) | (pbCDB[4] << 8) | (pbCDB[5]);
+ 187:../Library/lpcusb/msc_scsi.c ****             dwLen = (pbCDB[7] << 8) | pbCDB[8];
+ 129              		.loc 1 187 0
+ 130 00d4 0720D5E5 		ldrb	r2, [r5, #7]	@ zero_extendqisi2
+ 131 00d8 0830D5E5 		ldrb	r3, [r5, #8]	@ zero_extendqisi2
+ 132 00dc 023483E1 		orr	r3, r3, r2, asl #8
+ 188:../Library/lpcusb/msc_scsi.c ****             DBG("WRITE10, LBA=%d, len=%d\n", dwLBA, dwLen);
+ 189:../Library/lpcusb/msc_scsi.c ****             *piRspLen = dwLen * BLOCKSIZE;
+ 133              		.loc 1 189 0
+ 134 00e0 8334A0E1 		mov	r3, r3, asl #9
+ 135 00e4 003084E5 		str	r3, [r4, #0]
+ 190:../Library/lpcusb/msc_scsi.c ****             *pfDevIn = FALSE;
+ 136              		.loc 1 190 0
+ 137 00e8 0030A0E3 		mov	r3, #0
+ 138 00ec 003087E5 		str	r3, [r7, #0]
+ 139              	.LVL9:
+ 140              	.L20:
+ 191:../Library/lpcusb/msc_scsi.c ****             break;
+ 192:../Library/lpcusb/msc_scsi.c **** 
+ 193:../Library/lpcusb/msc_scsi.c ****         default:
+ 194:../Library/lpcusb/msc_scsi.c ****             DBG("Unhandled SCSI: ");
+ 195:../Library/lpcusb/msc_scsi.c ****             for (i = 0; i < iCDBLen; i++)
+ 196:../Library/lpcusb/msc_scsi.c ****             {
+ 197:../Library/lpcusb/msc_scsi.c ****                 DBG(" %02X", pbCDB[i]);
+ 198:../Library/lpcusb/msc_scsi.c ****             }
+ 199:../Library/lpcusb/msc_scsi.c ****             DBG("\n");
+ 200:../Library/lpcusb/msc_scsi.c ****             // unsupported command
+ 201:../Library/lpcusb/msc_scsi.c ****             dwSense = INVALID_CMD_OPCODE;
+ 202:../Library/lpcusb/msc_scsi.c ****             *piRspLen = 0;
+ 203:../Library/lpcusb/msc_scsi.c ****             return NULL;
+ 204:../Library/lpcusb/msc_scsi.c ****         }
+ 205:../Library/lpcusb/msc_scsi.c **** 
+ 206:../Library/lpcusb/msc_scsi.c **** 
+ 207:../Library/lpcusb/msc_scsi.c ****     return abBlockBuf;
+ 141              		.loc 1 207 0
+ 142 00f0 24009FE5 		ldr	r0, .L24
+ 191:../Library/lpcusb/msc_scsi.c ****             break;
+ 143              		.loc 1 191 0
+ 144 00f4 060000EA 		b	.L13
+ 145              	.L5:
+ 201:../Library/lpcusb/msc_scsi.c ****             dwSense = INVALID_CMD_OPCODE;
+ 146              		.loc 1 201 0
+ 147 00f8 20309FE5 		ldr	r3, .L24+4
+ 148 00fc 522AA0E3 		mov	r2, #335872
+ 202:../Library/lpcusb/msc_scsi.c ****             *piRspLen = 0;
+ 149              		.loc 1 202 0
+ 150 0100 0000A0E3 		mov	r0, #0
+ 201:../Library/lpcusb/msc_scsi.c ****             dwSense = INVALID_CMD_OPCODE;
+ 151              		.loc 1 201 0
+ 152 0104 002083E5 		str	r2, [r3, #0]
+ 202:../Library/lpcusb/msc_scsi.c ****             *piRspLen = 0;
+ 153              		.loc 1 202 0
+ 154 0108 000084E5 		str	r0, [r4, #0]
+ 203:../Library/lpcusb/msc_scsi.c ****             return NULL;
+ 155              		.loc 1 203 0
+ 156 010c 000000EA 		b	.L13
+ 157              	.L19:
+ 184:../Library/lpcusb/msc_scsi.c ****                 return NULL;
+ 158              		.loc 1 184 0
+ 159 0110 0000A0E3 		mov	r0, #0
+ 160              	.L13:
+ 208:../Library/lpcusb/msc_scsi.c **** }
+ 161              		.loc 1 208 0
+ 162 0114 FC41BDE8 		ldmfd	sp!, {r2, r3, r4, r5, r6, r7, r8, lr}
+ 163 0118 1EFF2FE1 		bx	lr
+ 164              	.L25:
+ 165              		.align	2
+ 166              	.L24:
+ 167 011c 04000000 		.word	.LANCHOR0+4
+ 168 0120 00000000 		.word	.LANCHOR0
+ 169              		.cfi_endproc
+ 170              	.LFE1:
+ 172              		.align	2
+ 173              		.global	SCSIHandleData
+ 175              	SCSIHandleData:
+ 176              	.LFB2:
+ 209:../Library/lpcusb/msc_scsi.c **** 
+ 210:../Library/lpcusb/msc_scsi.c **** 
+ 211:../Library/lpcusb/msc_scsi.c **** /*************************************************************************
+ 212:../Library/lpcusb/msc_scsi.c ****     SCSIHandleData
+ 213:../Library/lpcusb/msc_scsi.c ****     ==============
+ 214:../Library/lpcusb/msc_scsi.c ****         Handles a block of SCSI data.
+ 215:../Library/lpcusb/msc_scsi.c **** 
+ 216:../Library/lpcusb/msc_scsi.c ****     IN      pbCDB       Command data block
+ 217:../Library/lpcusb/msc_scsi.c ****             iCDBLen     Command data block len
+ 218:../Library/lpcusb/msc_scsi.c ****     IN/OUT  pbData      Data buffer
+ 219:../Library/lpcusb/msc_scsi.c ****     IN      dwOffset    Offset in data
+ 220:../Library/lpcusb/msc_scsi.c **** 
+ 221:../Library/lpcusb/msc_scsi.c ****     Returns a pointer to the next data to be exchanged if successful,
+ 222:../Library/lpcusb/msc_scsi.c ****     returns NULL otherwise.
+ 223:../Library/lpcusb/msc_scsi.c **** **************************************************************************/
+ 224:../Library/lpcusb/msc_scsi.c **** U8 * SCSIHandleData(U8 *pbCDB, int iCDBLen, U8 *pbData, U32 dwOffset)
+ 225:../Library/lpcusb/msc_scsi.c **** {
+ 177              		.loc 1 225 0
+ 178              		.cfi_startproc
+ 179              		@ Function supports interworking.
+ 180              		@ args = 0, pretend = 0, frame = 12
+ 181              		@ frame_needed = 0, uses_anonymous_args = 0
+ 182              	.LVL10:
+ 183 0124 77402DE9 		stmfd	sp!, {r0, r1, r2, r4, r5, r6, lr}
+ 184              	.LCFI1:
+ 185              		.cfi_def_cfa_offset 28
+ 186              		.cfi_offset 14, -4
+ 187              		.cfi_offset 6, -8
+ 188              		.cfi_offset 5, -12
+ 189              		.cfi_offset 4, -16
+ 190              		.cfi_offset 2, -20
+ 191              		.cfi_offset 1, -24
+ 192              		.cfi_offset 0, -28
+ 193              	.LVL11:
+ 194              		.loc 1 225 0
+ 195 0128 0050A0E1 		mov	r5, r0
+ 196 012c 0240A0E1 		mov	r4, r2
+ 226:../Library/lpcusb/msc_scsi.c ****     TCDB6   *pCDB;
+ 227:../Library/lpcusb/msc_scsi.c ****     U32     dwLBA;
+ 228:../Library/lpcusb/msc_scsi.c ****     U32     dwBufPos, dwBlockNr;
+ 229:../Library/lpcusb/msc_scsi.c ****     U32     dwNumBlocks, dwMaxBlock;
+ 230:../Library/lpcusb/msc_scsi.c **** 
+ 231:../Library/lpcusb/msc_scsi.c **** 	//pCDB = (TCDB6 *)pbCDB;
+ 232:../Library/lpcusb/msc_scsi.c **** 	//Compiler warning fix
+ 233:../Library/lpcusb/msc_scsi.c ****     TCDB6 cdb;
+ 234:../Library/lpcusb/msc_scsi.c **** 	pCDB = &cdb;
+ 235:../Library/lpcusb/msc_scsi.c **** 	memcpy(pCDB, pbCDB, sizeof(TCDB6));
+ 197              		.loc 1 235 0
+ 198 0130 0D00A0E1 		mov	r0, sp
+ 199              	.LVL12:
+ 200 0134 0510A0E1 		mov	r1, r5
+ 201              	.LVL13:
+ 202 0138 0820A0E3 		mov	r2, #8
+ 203              	.LVL14:
+ 225:../Library/lpcusb/msc_scsi.c **** {
+ 204              		.loc 1 225 0
+ 205 013c 0360A0E1 		mov	r6, r3
+ 206              		.loc 1 235 0
+ 207 0140 FEFFFFEB 		bl	memcpy
+ 208              	.LVL15:
+ 236:../Library/lpcusb/msc_scsi.c **** 	
+ 237:../Library/lpcusb/msc_scsi.c ****     switch (pCDB->bOperationCode)
+ 209              		.loc 1 237 0
+ 210 0144 0030DDE5 		ldrb	r3, [sp, #0]	@ zero_extendqisi2
+ 211 0148 120053E3 		cmp	r3, #18
+ 212 014c 1E00000A 		beq	.L30
+ 213 0150 0500008A 		bhi	.L34
+ 214 0154 000053E3 		cmp	r3, #0
+ 215 0158 94519FE5 		ldr	r5, .L44
+ 216              	.LVL16:
+ 217 015c 0900000A 		beq	.L28
+ 218 0160 030053E3 		cmp	r3, #3
+ 219 0164 5B00001A 		bne	.L27
+ 220 0168 0A0000EA 		b	.L42
+ 221              	.LVL17:
+ 222              	.L34:
+ 223 016c 280053E3 		cmp	r3, #40
+ 224 0170 2D00000A 		beq	.L32
+ 225 0174 2A0053E3 		cmp	r3, #42
+ 226 0178 3E00000A 		beq	.L33
+ 227 017c 250053E3 		cmp	r3, #37
+ 228 0180 5400001A 		bne	.L27
+ 229 0184 150000EA 		b	.L43
+ 230              	.LVL18:
+ 231              	.L28:
+ 238:../Library/lpcusb/msc_scsi.c ****     {
+ 239:../Library/lpcusb/msc_scsi.c **** 
+ 240:../Library/lpcusb/msc_scsi.c ****         // test unit ready
+ 241:../Library/lpcusb/msc_scsi.c ****         case 0x00:
+ 242:../Library/lpcusb/msc_scsi.c ****             if (dwSense != 0)
+ 232              		.loc 1 242 0
+ 233 0188 043095E4 		ldr	r3, [r5], #4
+ 243:../Library/lpcusb/msc_scsi.c ****             {
+ 244:../Library/lpcusb/msc_scsi.c ****                 return NULL;
+ 245:../Library/lpcusb/msc_scsi.c ****             }
+ 246:../Library/lpcusb/msc_scsi.c ****             break;
+ 247:../Library/lpcusb/msc_scsi.c **** 
+ 248:../Library/lpcusb/msc_scsi.c ****         // request sense
+ 249:../Library/lpcusb/msc_scsi.c ****         case SCSI_CMD_REQUEST_SENSE:
+ 250:../Library/lpcusb/msc_scsi.c ****             memcpy(pbData, abSense, 18);
+ 251:../Library/lpcusb/msc_scsi.c ****             // fill in KEY/ASC/ASCQ
+ 252:../Library/lpcusb/msc_scsi.c ****             pbData[2] = (dwSense >> 16) & 0xFF;
+ 253:../Library/lpcusb/msc_scsi.c ****             pbData[12] = (dwSense >> 8) & 0xFF;
+ 254:../Library/lpcusb/msc_scsi.c ****             pbData[13] = (dwSense >> 0) & 0xFF;
+ 255:../Library/lpcusb/msc_scsi.c ****             // reset sense data
+ 256:../Library/lpcusb/msc_scsi.c ****             dwSense = 0;
+ 257:../Library/lpcusb/msc_scsi.c ****             break;
+ 258:../Library/lpcusb/msc_scsi.c **** 
+ 259:../Library/lpcusb/msc_scsi.c ****         // inquiry
+ 260:../Library/lpcusb/msc_scsi.c ****         case SCSI_CMD_INQUIRY:
+ 261:../Library/lpcusb/msc_scsi.c ****             memcpy(pbData, abInquiry, sizeof(abInquiry));
+ 262:../Library/lpcusb/msc_scsi.c ****             break;
+ 263:../Library/lpcusb/msc_scsi.c **** 
+ 264:../Library/lpcusb/msc_scsi.c ****         // read capacity
+ 265:../Library/lpcusb/msc_scsi.c ****         case SCSI_CMD_READ_CAPACITY:
+ 266:../Library/lpcusb/msc_scsi.c ****         // get size of drive (bytes)
+ 267:../Library/lpcusb/msc_scsi.c ****             BlockDevGetSize(&dwNumBlocks);
+ 268:../Library/lpcusb/msc_scsi.c ****             // calculate highest LBA
+ 269:../Library/lpcusb/msc_scsi.c ****             dwMaxBlock = (dwNumBlocks - 1) / 512;
+ 270:../Library/lpcusb/msc_scsi.c **** 
+ 271:../Library/lpcusb/msc_scsi.c ****             pbData[0] = (dwMaxBlock >> 24) & 0xFF;
+ 272:../Library/lpcusb/msc_scsi.c ****             pbData[1] = (dwMaxBlock >> 16) & 0xFF;
+ 273:../Library/lpcusb/msc_scsi.c ****             pbData[2] = (dwMaxBlock >> 8) & 0xFF;
+ 274:../Library/lpcusb/msc_scsi.c ****             pbData[3] = (dwMaxBlock >> 0) & 0xFF;
+ 275:../Library/lpcusb/msc_scsi.c ****             pbData[4] = (BLOCKSIZE >> 24) & 0xFF;
+ 276:../Library/lpcusb/msc_scsi.c ****             pbData[5] = (BLOCKSIZE >> 16) & 0xFF;
+ 277:../Library/lpcusb/msc_scsi.c ****             pbData[6] = (BLOCKSIZE >> 8) & 0xFF;
+ 278:../Library/lpcusb/msc_scsi.c ****             pbData[7] = (BLOCKSIZE >> 0) & 0xFF;
+ 279:../Library/lpcusb/msc_scsi.c ****             break;
+ 280:../Library/lpcusb/msc_scsi.c **** 
+ 281:../Library/lpcusb/msc_scsi.c ****         // read10
+ 282:../Library/lpcusb/msc_scsi.c ****         case SCSI_CMD_READ_10:
+ 283:../Library/lpcusb/msc_scsi.c ****             dwLBA = (pbCDB[2] << 24) | (pbCDB[3] << 16) | (pbCDB[4] << 8) | (pbCDB[5]);
+ 284:../Library/lpcusb/msc_scsi.c **** 
+ 285:../Library/lpcusb/msc_scsi.c ****             // copy data from block buffer
+ 286:../Library/lpcusb/msc_scsi.c ****             dwBufPos = (dwOffset & (BLOCKSIZE - 1));
+ 287:../Library/lpcusb/msc_scsi.c ****             if (dwBufPos == 0)
+ 288:../Library/lpcusb/msc_scsi.c ****             {
+ 289:../Library/lpcusb/msc_scsi.c ****                 // read new block
+ 290:../Library/lpcusb/msc_scsi.c ****                 dwBlockNr = dwLBA + (dwOffset / BLOCKSIZE);
+ 291:../Library/lpcusb/msc_scsi.c ****                 DBG("R");
+ 292:../Library/lpcusb/msc_scsi.c ****                 if (BlockDevRead(dwBlockNr, abBlockBuf) < 0)
+ 293:../Library/lpcusb/msc_scsi.c ****                 {
+ 294:../Library/lpcusb/msc_scsi.c ****                     dwSense = READ_ERROR;
+ 295:../Library/lpcusb/msc_scsi.c ****                     DBG("BlockDevRead failed\n");
+ 296:../Library/lpcusb/msc_scsi.c ****                     return NULL;
+ 297:../Library/lpcusb/msc_scsi.c ****                 }
+ 298:../Library/lpcusb/msc_scsi.c ****             }
+ 299:../Library/lpcusb/msc_scsi.c ****             // return pointer to data
+ 300:../Library/lpcusb/msc_scsi.c ****             return abBlockBuf + dwBufPos;
+ 301:../Library/lpcusb/msc_scsi.c **** 
+ 302:../Library/lpcusb/msc_scsi.c ****             // write10
+ 303:../Library/lpcusb/msc_scsi.c ****             case SCSI_CMD_WRITE_10:
+ 304:../Library/lpcusb/msc_scsi.c ****             dwLBA = (pbCDB[2] << 24) | (pbCDB[3] << 16) | (pbCDB[4] << 8) | (pbCDB[5]);
+ 305:../Library/lpcusb/msc_scsi.c **** 
+ 306:../Library/lpcusb/msc_scsi.c ****             // copy data to block buffer
+ 307:../Library/lpcusb/msc_scsi.c ****             dwBufPos = ((dwOffset + 64) & (BLOCKSIZE - 1));
+ 308:../Library/lpcusb/msc_scsi.c ****             if (dwBufPos == 0)
+ 309:../Library/lpcusb/msc_scsi.c ****             {
+ 310:../Library/lpcusb/msc_scsi.c ****                 // write new block
+ 311:../Library/lpcusb/msc_scsi.c ****                 dwBlockNr = dwLBA + (dwOffset / BLOCKSIZE);
+ 312:../Library/lpcusb/msc_scsi.c ****                 DBG("W");
+ 313:../Library/lpcusb/msc_scsi.c ****                 if (BlockDevWrite(dwBlockNr, abBlockBuf) < 0)
+ 314:../Library/lpcusb/msc_scsi.c ****                 {
+ 315:../Library/lpcusb/msc_scsi.c ****                     dwSense = WRITE_ERROR;
+ 316:../Library/lpcusb/msc_scsi.c ****                     DBG("BlockDevWrite failed\n");
+ 317:../Library/lpcusb/msc_scsi.c ****                     return NULL;
+ 318:../Library/lpcusb/msc_scsi.c ****                 }
+ 319:../Library/lpcusb/msc_scsi.c ****             }
+ 320:../Library/lpcusb/msc_scsi.c ****             // return pointer to next data
+ 321:../Library/lpcusb/msc_scsi.c ****             return abBlockBuf + dwBufPos;
+ 322:../Library/lpcusb/msc_scsi.c **** 
+ 323:../Library/lpcusb/msc_scsi.c ****             default:
+ 324:../Library/lpcusb/msc_scsi.c ****             // unsupported command
+ 325:../Library/lpcusb/msc_scsi.c ****             dwSense = INVALID_CMD_OPCODE;
+ 326:../Library/lpcusb/msc_scsi.c ****             return NULL;
+ 327:../Library/lpcusb/msc_scsi.c ****         }
+ 328:../Library/lpcusb/msc_scsi.c **** 
+ 329:../Library/lpcusb/msc_scsi.c ****     // default: return pointer to start of block buffer
+ 330:../Library/lpcusb/msc_scsi.c ****     return abBlockBuf;
+ 234              		.loc 1 330 0
+ 235 018c 000053E3 		cmp	r3, #0
+ 236 0190 0050A013 		movne	r5, #0
+ 237 0194 530000EA 		b	.L35
+ 238              	.L42:
+ 250:../Library/lpcusb/msc_scsi.c ****             memcpy(pbData, abSense, 18);
+ 239              		.loc 1 250 0
+ 240 0198 1220A0E3 		mov	r2, #18
+ 241 019c 0400A0E1 		mov	r0, r4
+ 242 01a0 50119FE5 		ldr	r1, .L44+4
+ 243 01a4 FEFFFFEB 		bl	memcpy
+ 252:../Library/lpcusb/msc_scsi.c ****             pbData[2] = (dwSense >> 16) & 0xFF;
+ 244              		.loc 1 252 0
+ 245 01a8 003095E5 		ldr	r3, [r5, #0]
+ 246 01ac 2328A0E1 		mov	r2, r3, lsr #16
+ 247 01b0 0220C4E5 		strb	r2, [r4, #2]
+ 254:../Library/lpcusb/msc_scsi.c ****             pbData[13] = (dwSense >> 0) & 0xFF;
+ 248              		.loc 1 254 0
+ 249 01b4 0D30C4E5 		strb	r3, [r4, #13]
+ 253:../Library/lpcusb/msc_scsi.c ****             pbData[12] = (dwSense >> 8) & 0xFF;
+ 250              		.loc 1 253 0
+ 251 01b8 2324A0E1 		mov	r2, r3, lsr #8
+ 256:../Library/lpcusb/msc_scsi.c ****             dwSense = 0;
+ 252              		.loc 1 256 0
+ 253 01bc 0030A0E3 		mov	r3, #0
+ 253:../Library/lpcusb/msc_scsi.c ****             pbData[12] = (dwSense >> 8) & 0xFF;
+ 254              		.loc 1 253 0
+ 255 01c0 0C20C4E5 		strb	r2, [r4, #12]
+ 256:../Library/lpcusb/msc_scsi.c ****             dwSense = 0;
+ 256              		.loc 1 256 0
+ 257 01c4 043085E4 		str	r3, [r5], #4
+ 257:../Library/lpcusb/msc_scsi.c ****             break;
+ 258              		.loc 1 257 0
+ 259 01c8 460000EA 		b	.L35
+ 260              	.LVL19:
+ 261              	.L30:
+ 261:../Library/lpcusb/msc_scsi.c ****             memcpy(pbData, abInquiry, sizeof(abInquiry));
+ 262              		.loc 1 261 0
+ 263 01cc 0400A0E1 		mov	r0, r4
+ 264 01d0 24119FE5 		ldr	r1, .L44+8
+ 265 01d4 2420A0E3 		mov	r2, #36
+ 266 01d8 FEFFFFEB 		bl	memcpy
+ 267 01dc 100000EA 		b	.L40
+ 268              	.L43:
+ 267:../Library/lpcusb/msc_scsi.c ****             BlockDevGetSize(&dwNumBlocks);
+ 269              		.loc 1 267 0
+ 270 01e0 08008DE2 		add	r0, sp, #8
+ 271 01e4 FEFFFFEB 		bl	BlockDevGetSize
+ 272              	.LVL20:
+ 269:../Library/lpcusb/msc_scsi.c ****             dwMaxBlock = (dwNumBlocks - 1) / 512;
+ 273              		.loc 1 269 0
+ 274 01e8 08209DE5 		ldr	r2, [sp, #8]
+ 275 01ec 012042E2 		sub	r2, r2, #1
+ 276 01f0 A214A0E1 		mov	r1, r2, lsr #9
+ 277              	.LVL21:
+ 272:../Library/lpcusb/msc_scsi.c ****             pbData[1] = (dwMaxBlock >> 16) & 0xFF;
+ 278              		.loc 1 272 0
+ 279 01f4 A20CA0E1 		mov	r0, r2, lsr #25
+ 273:../Library/lpcusb/msc_scsi.c ****             pbData[2] = (dwMaxBlock >> 8) & 0xFF;
+ 280              		.loc 1 273 0
+ 281 01f8 A228A0E1 		mov	r2, r2, lsr #17
+ 271:../Library/lpcusb/msc_scsi.c ****             pbData[0] = (dwMaxBlock >> 24) & 0xFF;
+ 282              		.loc 1 271 0
+ 283 01fc 0030A0E3 		mov	r3, #0
+ 273:../Library/lpcusb/msc_scsi.c ****             pbData[2] = (dwMaxBlock >> 8) & 0xFF;
+ 284              		.loc 1 273 0
+ 285 0200 0220C4E5 		strb	r2, [r4, #2]
+ 277:../Library/lpcusb/msc_scsi.c ****             pbData[6] = (BLOCKSIZE >> 8) & 0xFF;
+ 286              		.loc 1 277 0
+ 287 0204 0220A0E3 		mov	r2, #2
+ 271:../Library/lpcusb/msc_scsi.c ****             pbData[0] = (dwMaxBlock >> 24) & 0xFF;
+ 288              		.loc 1 271 0
+ 289 0208 0030C4E5 		strb	r3, [r4, #0]
+ 272:../Library/lpcusb/msc_scsi.c ****             pbData[1] = (dwMaxBlock >> 16) & 0xFF;
+ 290              		.loc 1 272 0
+ 291 020c 0100C4E5 		strb	r0, [r4, #1]
+ 274:../Library/lpcusb/msc_scsi.c ****             pbData[3] = (dwMaxBlock >> 0) & 0xFF;
+ 292              		.loc 1 274 0
+ 293 0210 0310C4E5 		strb	r1, [r4, #3]
+ 275:../Library/lpcusb/msc_scsi.c ****             pbData[4] = (BLOCKSIZE >> 24) & 0xFF;
+ 294              		.loc 1 275 0
+ 295 0214 0430C4E5 		strb	r3, [r4, #4]
+ 276:../Library/lpcusb/msc_scsi.c ****             pbData[5] = (BLOCKSIZE >> 16) & 0xFF;
+ 296              		.loc 1 276 0
+ 297 0218 0530C4E5 		strb	r3, [r4, #5]
+ 277:../Library/lpcusb/msc_scsi.c ****             pbData[6] = (BLOCKSIZE >> 8) & 0xFF;
+ 298              		.loc 1 277 0
+ 299 021c 0620C4E5 		strb	r2, [r4, #6]
+ 278:../Library/lpcusb/msc_scsi.c ****             pbData[7] = (BLOCKSIZE >> 0) & 0xFF;
+ 300              		.loc 1 278 0
+ 301 0220 0730C4E5 		strb	r3, [r4, #7]
+ 302              	.LVL22:
+ 303              	.L40:
+ 304              		.loc 1 330 0
+ 305 0224 D4509FE5 		ldr	r5, .L44+12
+ 306              	.LVL23:
+ 279:../Library/lpcusb/msc_scsi.c ****             break;
+ 307              		.loc 1 279 0
+ 308 0228 2E0000EA 		b	.L35
+ 309              	.LVL24:
+ 310              	.L32:
+ 283:../Library/lpcusb/msc_scsi.c ****             dwLBA = (pbCDB[2] << 24) | (pbCDB[3] << 16) | (pbCDB[4] << 8) | (pbCDB[5]);
+ 311              		.loc 1 283 0
+ 312 022c 0210D5E5 		ldrb	r1, [r5, #2]	@ zero_extendqisi2
+ 313 0230 0300D5E5 		ldrb	r0, [r5, #3]	@ zero_extendqisi2
+ 314 0234 0430D5E5 		ldrb	r3, [r5, #4]	@ zero_extendqisi2
+ 315 0238 0520D5E5 		ldrb	r2, [r5, #5]	@ zero_extendqisi2
+ 316              	.LVL25:
+ 286:../Library/lpcusb/msc_scsi.c ****             dwBufPos = (dwOffset & (BLOCKSIZE - 1));
+ 317              		.loc 1 286 0
+ 318 023c 865BA0E1 		mov	r5, r6, asl #23
+ 319              	.LVL26:
+ 287:../Library/lpcusb/msc_scsi.c ****             if (dwBufPos == 0)
+ 320              		.loc 1 287 0
+ 321 0240 A55BB0E1 		movs	r5, r5, lsr #23
+ 322              	.LVL27:
+ 323 0244 2000001A 		bne	.L38
+ 324              	.LVL28:
+ 283:../Library/lpcusb/msc_scsi.c ****             dwLBA = (pbCDB[2] << 24) | (pbCDB[3] << 16) | (pbCDB[4] << 8) | (pbCDB[5]);
+ 325              		.loc 1 283 0
+ 326 0248 0008A0E1 		mov	r0, r0, asl #16
+ 327              	.LVL29:
+ 328 024c 011C80E1 		orr	r1, r0, r1, asl #24
+ 329 0250 022081E1 		orr	r2, r1, r2
+ 292:../Library/lpcusb/msc_scsi.c ****                 if (BlockDevRead(dwBlockNr, abBlockBuf) < 0)
+ 330              		.loc 1 292 0
+ 331 0254 98409FE5 		ldr	r4, .L44
+ 332              	.LVL30:
+ 283:../Library/lpcusb/msc_scsi.c ****             dwLBA = (pbCDB[2] << 24) | (pbCDB[3] << 16) | (pbCDB[4] << 8) | (pbCDB[5]);
+ 333              		.loc 1 283 0
+ 334 0258 033482E1 		orr	r3, r2, r3, asl #8
+ 292:../Library/lpcusb/msc_scsi.c ****                 if (BlockDevRead(dwBlockNr, abBlockBuf) < 0)
+ 335              		.loc 1 292 0
+ 336 025c A60483E0 		add	r0, r3, r6, lsr #9
+ 337 0260 041084E2 		add	r1, r4, #4
+ 338 0264 FEFFFFEB 		bl	BlockDevRead
+ 339 0268 000050E3 		cmp	r0, #0
+ 294:../Library/lpcusb/msc_scsi.c ****                     dwSense = READ_ERROR;
+ 340              		.loc 1 294 0
+ 341 026c 90309FB5 		ldrlt	r3, .L44+16
+ 292:../Library/lpcusb/msc_scsi.c ****                 if (BlockDevRead(dwBlockNr, abBlockBuf) < 0)
+ 342              		.loc 1 292 0
+ 343 0270 150000AA 		bge	.L38
+ 344 0274 120000EA 		b	.L41
+ 345              	.LVL31:
+ 346              	.L33:
+ 304:../Library/lpcusb/msc_scsi.c ****             dwLBA = (pbCDB[2] << 24) | (pbCDB[3] << 16) | (pbCDB[4] << 8) | (pbCDB[5]);
+ 347              		.loc 1 304 0
+ 348 0278 0210D5E5 		ldrb	r1, [r5, #2]	@ zero_extendqisi2
+ 349 027c 0300D5E5 		ldrb	r0, [r5, #3]	@ zero_extendqisi2
+ 350 0280 0430D5E5 		ldrb	r3, [r5, #4]	@ zero_extendqisi2
+ 351 0284 0520D5E5 		ldrb	r2, [r5, #5]	@ zero_extendqisi2
+ 352              	.LVL32:
+ 307:../Library/lpcusb/msc_scsi.c ****             dwBufPos = ((dwOffset + 64) & (BLOCKSIZE - 1));
+ 353              		.loc 1 307 0
+ 354 0288 405086E2 		add	r5, r6, #64
+ 355              	.LVL33:
+ 356 028c 855BA0E1 		mov	r5, r5, asl #23
+ 357              	.LVL34:
+ 308:../Library/lpcusb/msc_scsi.c ****             if (dwBufPos == 0)
+ 358              		.loc 1 308 0
+ 359 0290 A55BB0E1 		movs	r5, r5, lsr #23
+ 360              	.LVL35:
+ 361 0294 0C00001A 		bne	.L38
+ 362              	.LVL36:
+ 304:../Library/lpcusb/msc_scsi.c ****             dwLBA = (pbCDB[2] << 24) | (pbCDB[3] << 16) | (pbCDB[4] << 8) | (pbCDB[5]);
+ 363              		.loc 1 304 0
+ 364 0298 0008A0E1 		mov	r0, r0, asl #16
+ 365              	.LVL37:
+ 366 029c 011C80E1 		orr	r1, r0, r1, asl #24
+ 367 02a0 022081E1 		orr	r2, r1, r2
+ 313:../Library/lpcusb/msc_scsi.c ****                 if (BlockDevWrite(dwBlockNr, abBlockBuf) < 0)
+ 368              		.loc 1 313 0
+ 369 02a4 48409FE5 		ldr	r4, .L44
+ 370              	.LVL38:
+ 304:../Library/lpcusb/msc_scsi.c ****             dwLBA = (pbCDB[2] << 24) | (pbCDB[3] << 16) | (pbCDB[4] << 8) | (pbCDB[5]);
+ 371              		.loc 1 304 0
+ 372 02a8 033482E1 		orr	r3, r2, r3, asl #8
+ 313:../Library/lpcusb/msc_scsi.c ****                 if (BlockDevWrite(dwBlockNr, abBlockBuf) < 0)
+ 373              		.loc 1 313 0
+ 374 02ac A60483E0 		add	r0, r3, r6, lsr #9
+ 375 02b0 041084E2 		add	r1, r4, #4
+ 376 02b4 FEFFFFEB 		bl	BlockDevWrite
+ 377 02b8 000050E3 		cmp	r0, #0
+ 378 02bc 020000AA 		bge	.L38
+ 315:../Library/lpcusb/msc_scsi.c ****                     dwSense = WRITE_ERROR;
+ 379              		.loc 1 315 0
+ 380 02c0 C33BA0E3 		mov	r3, #199680
+ 381              	.L41:
+ 382 02c4 003084E5 		str	r3, [r4, #0]
+ 317:../Library/lpcusb/msc_scsi.c ****                     return NULL;
+ 383              		.loc 1 317 0
+ 384 02c8 060000EA 		b	.L35
+ 385              	.L38:
+ 321:../Library/lpcusb/msc_scsi.c ****             return abBlockBuf + dwBufPos;
+ 386              		.loc 1 321 0
+ 387 02cc 2C309FE5 		ldr	r3, .L44+12
+ 388 02d0 055083E0 		add	r5, r3, r5
+ 389              	.LVL39:
+ 390 02d4 030000EA 		b	.L35
+ 391              	.LVL40:
+ 392              	.L27:
+ 325:../Library/lpcusb/msc_scsi.c ****             dwSense = INVALID_CMD_OPCODE;
+ 393              		.loc 1 325 0
+ 394 02d8 14309FE5 		ldr	r3, .L44
+ 395 02dc 522AA0E3 		mov	r2, #335872
+ 396 02e0 002083E5 		str	r2, [r3, #0]
+ 326:../Library/lpcusb/msc_scsi.c ****             return NULL;
+ 397              		.loc 1 326 0
+ 398 02e4 0050A0E3 		mov	r5, #0
+ 399              	.LVL41:
+ 400              	.L35:
+ 331:../Library/lpcusb/msc_scsi.c **** }
+ 401              		.loc 1 331 0
+ 402 02e8 0500A0E1 		mov	r0, r5
+ 403 02ec 7E40BDE8 		ldmfd	sp!, {r1, r2, r3, r4, r5, r6, lr}
+ 404 02f0 1EFF2FE1 		bx	lr
+ 405              	.L45:
+ 406              		.align	2
+ 407              	.L44:
+ 408 02f4 00000000 		.word	.LANCHOR0
+ 409 02f8 00000000 		.word	.LANCHOR1
+ 410 02fc 12000000 		.word	.LANCHOR1+18
+ 411 0300 04000000 		.word	.LANCHOR0+4
+ 412 0304 00110300 		.word	200960
+ 413              		.cfi_endproc
+ 414              	.LFE2:
+ 416              		.section	.rodata
+ 417              		.set	.LANCHOR1,. + 0
+ 420              	abSense:
+ 421 0000 70       		.byte	112
+ 422 0001 00       		.byte	0
+ 423 0002 FF       		.byte	-1
+ 424 0003 00       		.byte	0
+ 425 0004 00       		.byte	0
+ 426 0005 00       		.byte	0
+ 427 0006 00       		.byte	0
+ 428 0007 0A       		.byte	10
+ 429 0008 00       		.byte	0
+ 430 0009 00       		.byte	0
+ 431 000a 00       		.byte	0
+ 432 000b 00       		.byte	0
+ 433 000c FF       		.byte	-1
+ 434 000d FF       		.byte	-1
+ 435 000e 00       		.byte	0
+ 436 000f 00       		.byte	0
+ 437 0010 00       		.byte	0
+ 438 0011 00       		.byte	0
+ 441              	abInquiry:
+ 442 0012 00       		.byte	0
+ 443 0013 80       		.byte	-128
+ 444 0014 04       		.byte	4
+ 445 0015 02       		.byte	2
+ 446 0016 1F       		.byte	31
+ 447 0017 00       		.byte	0
+ 448 0018 00       		.byte	0
+ 449 0019 00       		.byte	0
+ 450 001a 4C       		.byte	76
+ 451 001b 50       		.byte	80
+ 452 001c 43       		.byte	67
+ 453 001d 55       		.byte	85
+ 454 001e 53       		.byte	83
+ 455 001f 42       		.byte	66
+ 456 0020 20       		.byte	32
+ 457 0021 20       		.byte	32
+ 458 0022 4D       		.byte	77
+ 459 0023 61       		.byte	97
+ 460 0024 73       		.byte	115
+ 461 0025 73       		.byte	115
+ 462 0026 20       		.byte	32
+ 463 0027 73       		.byte	115
+ 464 0028 74       		.byte	116
+ 465 0029 6F       		.byte	111
+ 466 002a 72       		.byte	114
+ 467 002b 61       		.byte	97
+ 468 002c 67       		.byte	103
+ 469 002d 65       		.byte	101
+ 470 002e 20       		.byte	32
+ 471 002f 20       		.byte	32
+ 472 0030 20       		.byte	32
+ 473 0031 20       		.byte	32
+ 474 0032 30       		.byte	48
+ 475 0033 2E       		.byte	46
+ 476 0034 31       		.byte	49
+ 477 0035 20       		.byte	32
+ 478              		.bss
+ 479              		.align	2
+ 480              		.set	.LANCHOR0,. + 0
+ 483              	dwSense:
+ 484 0000 00000000 		.space	4
+ 487              	abBlockBuf:
+ 488 0004 00000000 		.space	512
+ 488      00000000 
+ 488      00000000 
+ 488      00000000 
+ 488      00000000 
+ 489              		.text
+ 490              	.Letext0:
+ 491              		.file 2 "../Library/lpcusb/type.h"
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 msc_scsi.c
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccIo58xW.s:5      .text:0000000000000000 $a
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccIo58xW.s:8      .text:0000000000000000 SCSIReset
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccIo58xW.s:26     .text:0000000000000010 $d
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccIo58xW.s:30     .text:0000000000000014 $a
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccIo58xW.s:33     .text:0000000000000014 SCSIHandleCmd
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccIo58xW.s:167    .text:000000000000011c $d
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccIo58xW.s:172    .text:0000000000000124 $a
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccIo58xW.s:175    .text:0000000000000124 SCSIHandleData
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccIo58xW.s:408    .text:00000000000002f4 $d
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccIo58xW.s:420    .rodata:0000000000000000 abSense
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccIo58xW.s:441    .rodata:0000000000000012 abInquiry
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccIo58xW.s:479    .bss:0000000000000000 $d
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccIo58xW.s:483    .bss:0000000000000000 dwSense
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccIo58xW.s:487    .bss:0000000000000004 abBlockBuf
+                     .debug_frame:0000000000000010 $d
+
+UNDEFINED SYMBOLS
+memcpy
+BlockDevGetSize
+BlockDevRead
+BlockDevWrite

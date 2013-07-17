@@ -1,0 +1,550 @@
+   1              		.file	"I2C.cpp"
+   2              		.text
+   3              	.Ltext0:
+   4              		.cfi_sections	.debug_frame
+   5              		.align	2
+   6              		.global	_ZN3I2CC2Ei
+   8              	_ZN3I2CC2Ei:
+   9              	.LFB1:
+  10              		.file 1 "../Library/i2c/I2C.cpp"
+   1:../Library/i2c/I2C.cpp **** /*
+   2:../Library/i2c/I2C.cpp **** *	I2C Library
+   3:../Library/i2c/I2C.cpp **** *	Class for using the I2C hardware
+   4:../Library/i2c/I2C.cpp **** *	(Does not use interrupts)
+   5:../Library/i2c/I2C.cpp **** *	Written By Ryan Owens
+   6:../Library/i2c/I2C.cpp **** *	SparkFun Electronics
+   7:../Library/i2c/I2C.cpp **** *	8/25/10
+   8:../Library/i2c/I2C.cpp **** */
+   9:../Library/i2c/I2C.cpp **** 
+  10:../Library/i2c/I2C.cpp **** #include "I2C.h"
+  11:../Library/i2c/I2C.cpp **** #include <stdlib.h>
+  12:../Library/i2c/I2C.cpp **** #include <stdio.h>
+  13:../Library/i2c/I2C.cpp **** //#include "LPC214x.h"
+  14:../Library/i2c/I2C.cpp **** #include "LPC21xx_SFE.h"
+  15:../Library/i2c/I2C.cpp **** #include "main.h"
+  16:../Library/i2c/I2C.cpp **** #define GLOBALOBJECT
+  17:../Library/i2c/I2C.cpp **** 
+  18:../Library/i2c/I2C.cpp **** I2C::I2C(int i2c_port)
+  11              		.loc 1 18 0
+  12              		.cfi_startproc
+  13              		@ Function supports interworking.
+  14              		@ args = 0, pretend = 0, frame = 0
+  15              		@ frame_needed = 0, uses_anonymous_args = 0
+  16              		@ link register save eliminated.
+  17              	.LVL0:
+  18              	.LBB2:
+  19:../Library/i2c/I2C.cpp **** {
+  20:../Library/i2c/I2C.cpp **** 	_i2c_port = i2c_port;
+  19              		.loc 1 20 0
+  20 0000 001080E5 		str	r1, [r0, #0]
+  21              	.LBE2:
+  21:../Library/i2c/I2C.cpp **** }
+  22              		.loc 1 21 0
+  23 0004 1EFF2FE1 		bx	lr
+  24              		.cfi_endproc
+  25              	.LFE1:
+  27              		.align	2
+  28              		.global	_ZN3I2CC2Ev
+  30              	_ZN3I2CC2Ev:
+  31              	.LFB4:
+  22:../Library/i2c/I2C.cpp **** 
+  23:../Library/i2c/I2C.cpp **** I2C::I2C(void)
+  32              		.loc 1 23 0
+  33              		.cfi_startproc
+  34              		@ Function supports interworking.
+  35              		@ args = 0, pretend = 0, frame = 0
+  36              		@ frame_needed = 0, uses_anonymous_args = 0
+  37              		@ link register save eliminated.
+  38              	.LVL1:
+  24:../Library/i2c/I2C.cpp **** {
+  25:../Library/i2c/I2C.cpp **** 	//do nothing
+  26:../Library/i2c/I2C.cpp **** }
+  39              		.loc 1 26 0
+  40 0008 1EFF2FE1 		bx	lr
+  41              		.cfi_endproc
+  42              	.LFE4:
+  44              		.align	2
+  45              		.global	_ZN3I2C9configureEv
+  47              	_ZN3I2C9configureEv:
+  48              	.LFB6:
+  27:../Library/i2c/I2C.cpp **** 
+  28:../Library/i2c/I2C.cpp **** void I2C::configure(void)
+  29:../Library/i2c/I2C.cpp **** {
+  49              		.loc 1 29 0
+  50              		.cfi_startproc
+  51              		@ Function supports interworking.
+  52              		@ args = 0, pretend = 0, frame = 0
+  53              		@ frame_needed = 0, uses_anonymous_args = 0
+  54              		@ link register save eliminated.
+  55              	.LVL2:
+  30:../Library/i2c/I2C.cpp **** 	//Enable the Port 0 I2C pins
+  31:../Library/i2c/I2C.cpp **** 	//NOTE: This should be modified to take the _i2c_port as an argument
+  32:../Library/i2c/I2C.cpp **** 	PINSEL0 |= 0x00000050;
+  56              		.loc 1 32 0
+  57 000c 1C309FE5 		ldr	r3, .L4
+  58 0010 002093E5 		ldr	r2, [r3, #0]
+  59 0014 502082E3 		orr	r2, r2, #80
+  60 0018 002083E5 		str	r2, [r3, #0]
+  33:../Library/i2c/I2C.cpp **** 	
+  34:../Library/i2c/I2C.cpp **** 	//Configure the I2C Clock for 100 kHz rate and 50% duty cycle
+  35:../Library/i2c/I2C.cpp **** 	I2SCLH = 295;
+  61              		.loc 1 35 0
+  62 001c 10209FE5 		ldr	r2, .L4+4
+  63 0020 013843E2 		sub	r3, r3, #65536
+  64 0024 B021C3E1 		strh	r2, [r3, #16]	@ movhi
+  36:../Library/i2c/I2C.cpp **** 	I2SCLL = 295;
+  65              		.loc 1 36 0
+  66 0028 B421C3E1 		strh	r2, [r3, #20]	@ movhi
+  37:../Library/i2c/I2C.cpp **** }
+  67              		.loc 1 37 0
+  68 002c 1EFF2FE1 		bx	lr
+  69              	.L5:
+  70              		.align	2
+  71              	.L4:
+  72 0030 00C002E0 		.word	-536690688
+  73 0034 27010000 		.word	295
+  74              		.cfi_endproc
+  75              	.LFE6:
+  77              		.align	2
+  78              		.global	_ZN3I2C4sendEcPccc
+  80              	_ZN3I2C4sendEcPccc:
+  81              	.LFB7:
+  38:../Library/i2c/I2C.cpp **** 
+  39:../Library/i2c/I2C.cpp **** char I2C::send(char SLA, char * contents, char direction, char length)
+  40:../Library/i2c/I2C.cpp **** {
+  82              		.loc 1 40 0
+  83              		.cfi_startproc
+  84              		@ Function supports interworking.
+  85              		@ args = 4, pretend = 0, frame = 0
+  86              		@ frame_needed = 0, uses_anonymous_args = 0
+  87              		@ link register save eliminated.
+  88              	.LVL3:
+  89 0038 F0012DE9 		stmfd	sp!, {r4, r5, r6, r7, r8}
+  90              	.LCFI0:
+  91              		.cfi_def_cfa_offset 20
+  92              		.cfi_offset 8, -4
+  93              		.cfi_offset 7, -8
+  94              		.cfi_offset 6, -12
+  95              		.cfi_offset 5, -16
+  96              		.cfi_offset 4, -20
+  97              	.LBB3:
+  41:../Library/i2c/I2C.cpp **** 	char STATE, error=0, exit=0;
+  42:../Library/i2c/I2C.cpp **** 
+  43:../Library/i2c/I2C.cpp **** 	//Initialize the I2CONSET register
+  44:../Library/i2c/I2C.cpp **** 	I2CONSET = (1<<I2EN);	//Enable the I2C module;
+  98              		.loc 1 44 0
+  99 003c EC619FE5 		ldr	r6, .L42
+ 100 0040 4000A0E3 		mov	r0, #64
+ 101              	.LVL4:
+ 102              	.LBE3:
+  40:../Library/i2c/I2C.cpp **** {
+ 103              		.loc 1 40 0
+ 104 0044 1450DDE5 		ldrb	r5, [sp, #20]	@ zero_extendqisi2
+ 105              	.LBB4:
+ 106              		.loc 1 44 0
+ 107 0048 0000C6E5 		strb	r0, [r6, #0]
+  45:../Library/i2c/I2C.cpp **** 	//I2CONCLR = (1<<SIC);	//Make sure the SI bit is cleared.
+  46:../Library/i2c/I2C.cpp **** 	
+  47:../Library/i2c/I2C.cpp **** 	//Set the Start Bit to start I2C communication
+  48:../Library/i2c/I2C.cpp **** 	I2CONSET |= (1<<STA);	//Send the Start Bit.
+ 108              		.loc 1 48 0
+ 109 004c 0000D6E5 		ldrb	r0, [r6, #0]	@ zero_extendqisi2
+ 110 0050 200080E3 		orr	r0, r0, #32
+ 111 0054 0000C6E5 		strb	r0, [r6, #0]
+  41:../Library/i2c/I2C.cpp **** 	char STATE, error=0, exit=0;
+ 112              		.loc 1 41 0
+ 113 0058 0040A0E3 		mov	r4, #0
+  49:../Library/i2c/I2C.cpp **** 	I2CONCLR = (1<<SIC);		//Make sure the SI bit is cleared.
+ 114              		.loc 1 49 0
+ 115 005c 0800A0E3 		mov	r0, #8
+  50:../Library/i2c/I2C.cpp **** 	
+  51:../Library/i2c/I2C.cpp **** 	
+  52:../Library/i2c/I2C.cpp **** 	while(!exit && !error){
+  53:../Library/i2c/I2C.cpp **** 		//rprintf("I2CON: %X, length: %d, error: %d\n\r", I2CONSET, length, error);
+  54:../Library/i2c/I2C.cpp **** 		//rprintf("Waiting...");
+  55:../Library/i2c/I2C.cpp **** 		while(!(I2CONSET & (1<<SI)));
+  56:../Library/i2c/I2C.cpp **** 		//rprintf("ACK\n\r");
+  57:../Library/i2c/I2C.cpp **** 		STATE = I2STAT;	//Get the value in the status register
+  58:../Library/i2c/I2C.cpp **** 		switch (STATE){
+  59:../Library/i2c/I2C.cpp **** 			//The Start condition has been sent.Load the Slave Device Address and the direction bit into the
+  60:../Library/i2c/I2C.cpp **** 			case 0x08:	//rprintf("Start Sent\n\r");
+  61:../Library/i2c/I2C.cpp **** 						I2DAT = SLA+direction; //Put the Slave Device Address into the data register.
+ 116              		.loc 1 61 0
+ 117 0060 013083E0 		add	r3, r3, r1
+ 118              	.LVL5:
+  49:../Library/i2c/I2C.cpp **** 	I2CONCLR = (1<<SIC);		//Make sure the SI bit is cleared.
+ 119              		.loc 1 49 0
+ 120 0064 1800C6E5 		strb	r0, [r6, #24]
+  55:../Library/i2c/I2C.cpp **** 		while(!(I2CONSET & (1<<SI)));
+ 121              		.loc 1 55 0
+ 122 0068 06C0A0E1 		mov	ip, r6
+  41:../Library/i2c/I2C.cpp **** 	char STATE, error=0, exit=0;
+ 123              		.loc 1 41 0
+ 124 006c 0400A0E1 		mov	r0, r4
+  62:../Library/i2c/I2C.cpp **** 						I2CONCLR = ((1<<STA)|(1<<STO)|(1<<SI));	//Don't send another start condition
+  63:../Library/i2c/I2C.cpp **** 						
+  64:../Library/i2c/I2C.cpp **** 				break;
+  65:../Library/i2c/I2C.cpp **** 			//A repeated START condition has been sent (shouldn't happen! If it does there was an error)
+  66:../Library/i2c/I2C.cpp **** 			case 0x10:	error=1;
+  67:../Library/i2c/I2C.cpp **** 						//rprintf("Error 10");
+  68:../Library/i2c/I2C.cpp **** 				break;
+  69:../Library/i2c/I2C.cpp **** 			//SLA+W has been written and ACK has been received.
+  70:../Library/i2c/I2C.cpp **** 			case 0x18:	//rprintf("Write address Sent");
+  71:../Library/i2c/I2C.cpp **** 						if(length-- > 0){
+  72:../Library/i2c/I2C.cpp **** 							//rprintf("Writing Contents, %d left\n\r", length);
+  73:../Library/i2c/I2C.cpp **** 							I2DAT = *contents++;	//Write the contents to be sent to the I2C module
+  74:../Library/i2c/I2C.cpp **** 							I2CONCLR = (1<<SI);
+  75:../Library/i2c/I2C.cpp **** 							//rprintf(" %x\n\r", I2CONSET);
+  76:../Library/i2c/I2C.cpp **** 						}
+  77:../Library/i2c/I2C.cpp **** 						else{
+  78:../Library/i2c/I2C.cpp **** 							error=1;	//IF the length was 0 or less there is nothing to write!
+  79:../Library/i2c/I2C.cpp **** 							//rprintf("Error 18");
+  80:../Library/i2c/I2C.cpp **** 						}
+  81:../Library/i2c/I2C.cpp **** 				break;
+  82:../Library/i2c/I2C.cpp **** 			//SLA+W has been writtten and NOT ACK was received.
+  83:../Library/i2c/I2C.cpp **** 			case 0x20: 	I2CONCLR = (1<<STA);
+  84:../Library/i2c/I2C.cpp **** 						error=1;	 //This shouldn't happen!
+  85:../Library/i2c/I2C.cpp **** 						//rprintf("Error 20");
+  86:../Library/i2c/I2C.cpp **** 				break;
+  87:../Library/i2c/I2C.cpp **** 			//Data byte has been transmitted and ACK was received.
+  88:../Library/i2c/I2C.cpp **** 			case 0x28:	//rprintf("Data sent\n\r");
+  89:../Library/i2c/I2C.cpp **** 						if(length-- > 0){
+  90:../Library/i2c/I2C.cpp **** 							I2DAT = *contents++;	//If there's more data to send then load it up!
+  91:../Library/i2c/I2C.cpp **** 							//rprintf("Writing Contents, %d left", length);
+  92:../Library/i2c/I2C.cpp **** 							I2CONCLR = (1<<STA)|(1<<STO)|(1<<SI);
+  93:../Library/i2c/I2C.cpp **** 						}
+  94:../Library/i2c/I2C.cpp **** 						else{
+  95:../Library/i2c/I2C.cpp **** 							//rprintf("Finished Writing");
+  96:../Library/i2c/I2C.cpp **** 							exit=1;
+  97:../Library/i2c/I2C.cpp **** 							I2CONSET = (1<<STO);
+  98:../Library/i2c/I2C.cpp **** 							I2CONCLR = (1<<STA)|(1<<SI);
+  99:../Library/i2c/I2C.cpp **** 						}
+ 100:../Library/i2c/I2C.cpp **** 						//Else we're finished and can send the stop condition
+ 101:../Library/i2c/I2C.cpp **** 				break;
+ 102:../Library/i2c/I2C.cpp **** 			//Data byte has been transmitted and NOT ACK was received
+ 103:../Library/i2c/I2C.cpp **** 			case 0x30: 	I2CONCLR = (1<<STA);
+ 125              		.loc 1 103 0
+ 126 0070 2080A0E3 		mov	r8, #32
+ 104:../Library/i2c/I2C.cpp **** 						I2CONSET = (1<<STO);
+ 127              		.loc 1 104 0
+ 128 0074 1070A0E3 		mov	r7, #16
+  61:../Library/i2c/I2C.cpp **** 						I2DAT = SLA+direction; //Put the Slave Device Address into the data register.
+ 129              		.loc 1 61 0
+ 130 0078 FF3003E2 		and	r3, r3, #255
+  52:../Library/i2c/I2C.cpp **** 	while(!exit && !error){
+ 131              		.loc 1 52 0
+ 132 007c 640000EA 		b	.L34
+ 133              	.LVL6:
+ 134              	.L32:
+  55:../Library/i2c/I2C.cpp **** 		while(!(I2CONSET & (1<<SI)));
+ 135              		.loc 1 55 0 discriminator 1
+ 136 0080 0010D6E5 		ldrb	r1, [r6, #0]	@ zero_extendqisi2
+ 137 0084 080011E3 		tst	r1, #8
+ 138 0088 FCFFFF0A 		beq	.L32
+  57:../Library/i2c/I2C.cpp **** 		STATE = I2STAT;	//Get the value in the status register
+ 139              		.loc 1 57 0
+ 140 008c 0400DCE5 		ldrb	r0, [ip, #4]	@ zero_extendqisi2
+ 141              	.LVL7:
+ 142 0090 FF0000E2 		and	r0, r0, #255
+ 143              	.LVL8:
+  58:../Library/i2c/I2C.cpp **** 		switch (STATE){
+ 144              		.loc 1 58 0
+ 145 0094 300050E3 		cmp	r0, #48
+ 146 0098 3900000A 		beq	.L14
+ 147 009c 0A00008A 		bhi	.L19
+ 148 00a0 180050E3 		cmp	r0, #24
+ 149 00a4 1700000A 		beq	.L11
+ 150 00a8 0200008A 		bhi	.L20
+ 151 00ac 080050E3 		cmp	r0, #8
+ 152 00b0 5600001A 		bne	.L29
+ 153 00b4 0F0000EA 		b	.L38
+ 154              	.L20:
+ 155 00b8 200050E3 		cmp	r0, #32
+ 156 00bc 1E00000A 		beq	.L12
+ 157 00c0 280050E3 		cmp	r0, #40
+ 158 00c4 5100001A 		bne	.L29
+ 159 00c8 1D0000EA 		b	.L39
+ 160              	.L19:
+ 161 00cc 480050E3 		cmp	r0, #72
+ 162 00d0 3400000A 		beq	.L16
+ 163 00d4 0200008A 		bhi	.L21
+ 164 00d8 400050E3 		cmp	r0, #64
+ 165 00dc 4B00001A 		bne	.L29
+ 166 00e0 2A0000EA 		b	.L40
+ 167              	.L21:
+ 168 00e4 500050E3 		cmp	r0, #80
+ 169 00e8 3000000A 		beq	.L17
+ 170 00ec 580050E3 		cmp	r0, #88
+ 171 00f0 4600001A 		bne	.L29
+ 172 00f4 370000EA 		b	.L41
+ 173              	.L38:
+  62:../Library/i2c/I2C.cpp **** 						I2CONCLR = ((1<<STA)|(1<<STO)|(1<<SI));	//Don't send another start condition
+ 174              		.loc 1 62 0
+ 175 00f8 3810A0E3 		mov	r1, #56
+  61:../Library/i2c/I2C.cpp **** 						I2DAT = SLA+direction; //Put the Slave Device Address into the data register.
+ 176              		.loc 1 61 0
+ 177 00fc 0830CCE5 		strb	r3, [ip, #8]
+  62:../Library/i2c/I2C.cpp **** 						I2CONCLR = ((1<<STA)|(1<<STO)|(1<<SI));	//Don't send another start condition
+ 178              		.loc 1 62 0
+ 179 0100 1810CCE5 		strb	r1, [ip, #24]
+ 180 0104 090000EA 		b	.L35
+ 181              	.L11:
+  71:../Library/i2c/I2C.cpp **** 						if(length-- > 0){
+ 182              		.loc 1 71 0
+ 183 0108 010045E2 		sub	r0, r5, #1
+ 184              	.LVL9:
+ 185 010c FF0000E2 		and	r0, r0, #255
+ 186              	.LVL10:
+ 187 0110 000055E3 		cmp	r5, #0
+ 188 0114 0050A001 		moveq	r5, r0
+ 189 0118 3B00000A 		beq	.L37
+  73:../Library/i2c/I2C.cpp **** 							I2DAT = *contents++;	//Write the contents to be sent to the I2C module
+ 190              		.loc 1 73 0
+ 191 011c 0110D2E4 		ldrb	r1, [r2], #1	@ zero_extendqisi2
+ 192              	.LVL11:
+ 193 0120 0810CCE5 		strb	r1, [ip, #8]
+ 194              	.LVL12:
+  74:../Library/i2c/I2C.cpp **** 							I2CONCLR = (1<<SI);
+ 195              		.loc 1 74 0
+ 196 0124 0810A0E3 		mov	r1, #8
+ 197 0128 1810CCE5 		strb	r1, [ip, #24]
+  71:../Library/i2c/I2C.cpp **** 						if(length-- > 0){
+ 198              		.loc 1 71 0
+ 199 012c 0050A0E1 		mov	r5, r0
+ 200              	.LVL13:
+ 201              	.L35:
+  74:../Library/i2c/I2C.cpp **** 							I2CONCLR = (1<<SI);
+ 202              		.loc 1 74 0
+ 203 0130 0040A0E3 		mov	r4, #0
+ 204              	.LVL14:
+ 205 0134 0400A0E1 		mov	r0, r4
+ 206 0138 350000EA 		b	.L34
+ 207              	.LVL15:
+ 208              	.L12:
+  83:../Library/i2c/I2C.cpp **** 			case 0x20: 	I2CONCLR = (1<<STA);
+ 209              		.loc 1 83 0
+ 210 013c 1800CCE5 		strb	r0, [ip, #24]
+ 211              	.LVL16:
+ 212 0140 310000EA 		b	.L37
+ 213              	.LVL17:
+ 214              	.L39:
+  89:../Library/i2c/I2C.cpp **** 						if(length-- > 0){
+ 215              		.loc 1 89 0
+ 216 0144 011045E2 		sub	r1, r5, #1
+ 217 0148 000055E3 		cmp	r5, #0
+ 218 014c FF1001E2 		and	r1, r1, #255
+ 219              	.LVL18:
+ 220 0150 0500000A 		beq	.L23
+  90:../Library/i2c/I2C.cpp **** 							I2DAT = *contents++;	//If there's more data to send then load it up!
+ 221              		.loc 1 90 0
+ 222 0154 0100D2E4 		ldrb	r0, [r2], #1	@ zero_extendqisi2
+ 223              	.LVL19:
+ 224 0158 0800CCE5 		strb	r0, [ip, #8]
+ 225              	.LVL20:
+  92:../Library/i2c/I2C.cpp **** 							I2CONCLR = (1<<STA)|(1<<STO)|(1<<SI);
+ 226              		.loc 1 92 0
+ 227 015c 3800A0E3 		mov	r0, #56
+ 228 0160 1800CCE5 		strb	r0, [ip, #24]
+  89:../Library/i2c/I2C.cpp **** 						if(length-- > 0){
+ 229              		.loc 1 89 0
+ 230 0164 0150A0E1 		mov	r5, r1
+ 231 0168 F0FFFFEA 		b	.L35
+ 232              	.LVL21:
+ 233              	.L23:
+  97:../Library/i2c/I2C.cpp **** 							I2CONSET = (1<<STO);
+ 234              		.loc 1 97 0
+ 235 016c 0070CCE5 		strb	r7, [ip, #0]
+  89:../Library/i2c/I2C.cpp **** 						if(length-- > 0){
+ 236              		.loc 1 89 0
+ 237 0170 0150A0E1 		mov	r5, r1
+  98:../Library/i2c/I2C.cpp **** 							I2CONCLR = (1<<STA)|(1<<SI);
+ 238              		.loc 1 98 0
+ 239 0174 1800CCE5 		strb	r0, [ip, #24]
+  96:../Library/i2c/I2C.cpp **** 							exit=1;
+ 240              		.loc 1 96 0
+ 241 0178 0140A0E3 		mov	r4, #1
+  98:../Library/i2c/I2C.cpp **** 							I2CONCLR = (1<<STA)|(1<<SI);
+ 242              		.loc 1 98 0
+ 243 017c 0000A0E3 		mov	r0, #0
+ 244              	.LVL22:
+ 245 0180 230000EA 		b	.L34
+ 246              	.LVL23:
+ 247              	.L14:
+ 103:../Library/i2c/I2C.cpp **** 			case 0x30: 	I2CONCLR = (1<<STA);
+ 248              		.loc 1 103 0
+ 249 0184 1880CCE5 		strb	r8, [ip, #24]
+ 250              		.loc 1 104 0
+ 251 0188 0070CCE5 		strb	r7, [ip, #0]
+ 252              	.LVL24:
+ 253 018c 1E0000EA 		b	.L37
+ 254              	.LVL25:
+ 255              	.L40:
+ 105:../Library/i2c/I2C.cpp **** 						error=1;	//This should happen.
+ 106:../Library/i2c/I2C.cpp **** 						//rprintf("Error 30");
+ 107:../Library/i2c/I2C.cpp **** 				break;
+ 108:../Library/i2c/I2C.cpp **** 			//Arbitration lost in NOT ACK bit (don't even know what this means! definately an error)
+ 109:../Library/i2c/I2C.cpp **** 			case 0x38: 	error=1;
+ 110:../Library/i2c/I2C.cpp **** 						//rprintf("Error 38");
+ 111:../Library/i2c/I2C.cpp **** 				break;
+ 112:../Library/i2c/I2C.cpp **** 			//SLA+R has been sent and an ACK has been received. Make sure ack is configured and then data wi
+ 113:../Library/i2c/I2C.cpp **** 			case 0x40:	//rprintf("Read Address sent\n\r");
+ 114:../Library/i2c/I2C.cpp **** 						if(--length > 0)I2CONSET = (1<<AA);	//If there's more info to read enable the AcK
+ 256              		.loc 1 114 0
+ 257 0190 015045E2 		sub	r5, r5, #1
+ 258              	.LVL26:
+ 259 0194 FF5015E2 		ands	r5, r5, #255
+ 260              	.LVL27:
+ 261 0198 0410A0E3 		mov	r1, #4
+ 262 019c 0010CC15 		strneb	r1, [ip, #0]
+ 115:../Library/i2c/I2C.cpp **** 						else I2CONCLR = (1<<AA);	//If we're done, disable the ack so we can send the stop bit
+ 263              		.loc 1 115 0
+ 264 01a0 1810CC05 		streqb	r1, [ip, #24]
+ 265 01a4 080000EA 		b	.L36
+ 266              	.LVL28:
+ 267              	.L16:
+ 116:../Library/i2c/I2C.cpp **** 						I2CONCLR = (1<<STA)|(1<<STO)|(1<<SI);
+ 117:../Library/i2c/I2C.cpp **** 				break;
+ 118:../Library/i2c/I2C.cpp **** 			//SLA+R has been sent and NOT ACK was received (This is an error, shouldn't happen
+ 119:../Library/i2c/I2C.cpp **** 			case 0x48: 	I2CONCLR = (1<<STA);
+ 268              		.loc 1 119 0
+ 269 01a8 1880CCE5 		strb	r8, [ip, #24]
+ 270              	.LVL29:
+ 271 01ac 160000EA 		b	.L37
+ 272              	.LVL30:
+ 273              	.L17:
+ 120:../Library/i2c/I2C.cpp **** 						error=1;
+ 121:../Library/i2c/I2C.cpp **** 						//rprintf("Error 48");
+ 122:../Library/i2c/I2C.cpp **** 				break;
+ 123:../Library/i2c/I2C.cpp **** 			//Data byte has been received and ACK has been returned
+ 124:../Library/i2c/I2C.cpp **** 			case 0x50:	if(--length > 0)I2CONSET = (1<<AA);	//If there's more info to read enable the AcK
+ 274              		.loc 1 124 0
+ 275 01b0 015045E2 		sub	r5, r5, #1
+ 276              	.LVL31:
+ 277 01b4 FF5015E2 		ands	r5, r5, #255
+ 278              	.LVL32:
+ 279 01b8 0400A0E3 		mov	r0, #4
+ 280              	.LVL33:
+ 281 01bc 0000CC15 		strneb	r0, [ip, #0]
+ 125:../Library/i2c/I2C.cpp **** 						else I2CONCLR = (1<<AA);	//If we're done, disable the ack so we can send the stop bit
+ 282              		.loc 1 125 0
+ 283 01c0 1800CC05 		streqb	r0, [ip, #24]
+ 126:../Library/i2c/I2C.cpp **** 						//rprintf("Reading Contents...");
+ 127:../Library/i2c/I2C.cpp **** 						*contents++=I2DAT;	//Read the received contents of the I2C module.
+ 284              		.loc 1 127 0
+ 285 01c4 0810D6E5 		ldrb	r1, [r6, #8]	@ zero_extendqisi2
+ 286 01c8 0110C2E4 		strb	r1, [r2], #1
+ 287              	.LVL34:
+ 288              	.L36:
+ 128:../Library/i2c/I2C.cpp **** 						I2CONCLR = (1<<STA)|(1<<STO)|(1<<SI);
+ 289              		.loc 1 128 0
+ 290 01cc 3810A0E3 		mov	r1, #56
+ 291 01d0 1810C6E5 		strb	r1, [r6, #24]
+ 292 01d4 D5FFFFEA 		b	.L35
+ 293              	.LVL35:
+ 294              	.L41:
+ 129:../Library/i2c/I2C.cpp **** 				break;
+ 130:../Library/i2c/I2C.cpp **** 			//Data byte has been received and NOT ACK has been returned
+ 131:../Library/i2c/I2C.cpp **** 			case 0x58:  if(length > 0){
+ 295              		.loc 1 131 0
+ 296 01d8 000055E3 		cmp	r5, #0
+ 132:../Library/i2c/I2C.cpp **** 							error=1;	//If there was more data to read and we got a NOT ACK there was an error
+ 133:../Library/i2c/I2C.cpp **** 							//rprintf("Error 58");
+ 134:../Library/i2c/I2C.cpp **** 						}
+ 135:../Library/i2c/I2C.cpp **** 						else{ *contents++=I2DAT;	//Load the received I2C contents
+ 297              		.loc 1 135 0
+ 298 01dc 0810DC05 		ldreqb	r1, [ip, #8]	@ zero_extendqisi2
+ 299 01e0 0110C204 		streqb	r1, [r2], #1
+ 300              	.LVL36:
+ 136:../Library/i2c/I2C.cpp **** 							//rprintf("Reading Contents...");
+ 137:../Library/i2c/I2C.cpp **** 						}
+ 138:../Library/i2c/I2C.cpp **** 						I2CONCLR |= (1<<STA)|(1<<SI);
+ 301              		.loc 1 138 0
+ 302 01e4 1810D6E5 		ldrb	r1, [r6, #24]	@ zero_extendqisi2
+ 303 01e8 281081E3 		orr	r1, r1, #40
+ 304 01ec 1810C6E5 		strb	r1, [r6, #24]
+ 139:../Library/i2c/I2C.cpp **** 						I2CONSET |= (1<<STO);
+ 305              		.loc 1 139 0
+ 306 01f0 0010D6E5 		ldrb	r1, [r6, #0]	@ zero_extendqisi2
+ 307 01f4 101081E3 		orr	r1, r1, #16
+ 135:../Library/i2c/I2C.cpp **** 						else{ *contents++=I2DAT;	//Load the received I2C contents
+ 308              		.loc 1 135 0
+ 309 01f8 0500A001 		moveq	r0, r5
+ 310              	.LVL37:
+ 132:../Library/i2c/I2C.cpp **** 							error=1;	//If there was more data to read and we got a NOT ACK there was an error
+ 311              		.loc 1 132 0
+ 312 01fc 0100A013 		movne	r0, #1
+ 313              	.LVL38:
+ 314              		.loc 1 139 0
+ 315 0200 0010C6E5 		strb	r1, [r6, #0]
+ 316              	.LVL39:
+ 140:../Library/i2c/I2C.cpp **** 						exit=1;
+ 317              		.loc 1 140 0
+ 318 0204 0140A0E3 		mov	r4, #1
+ 141:../Library/i2c/I2C.cpp **** 				break;
+ 319              		.loc 1 141 0
+ 320 0208 010000EA 		b	.L34
+ 321              	.LVL40:
+ 322              	.L37:
+  71:../Library/i2c/I2C.cpp **** 						if(length-- > 0){
+ 323              		.loc 1 71 0
+ 324 020c 0040A0E3 		mov	r4, #0
+ 325              	.LVL41:
+ 326              	.L29:
+  66:../Library/i2c/I2C.cpp **** 			case 0x10:	error=1;
+ 327              		.loc 1 66 0
+ 328 0210 0100A0E3 		mov	r0, #1
+ 329              	.L34:
+ 330              	.LVL42:
+  52:../Library/i2c/I2C.cpp **** 	while(!exit && !error){
+ 331              		.loc 1 52 0 discriminator 1
+ 332 0214 041080E1 		orr	r1, r0, r4
+ 333 0218 FF0011E3 		tst	r1, #255
+ 334 021c 97FFFF0A 		beq	.L32
+ 142:../Library/i2c/I2C.cpp **** 			default:	error=1;
+ 143:../Library/i2c/I2C.cpp **** 						//rprintf("Unknown Error");
+ 144:../Library/i2c/I2C.cpp **** 				break;
+ 145:../Library/i2c/I2C.cpp **** 		}
+ 146:../Library/i2c/I2C.cpp **** 		
+ 147:../Library/i2c/I2C.cpp **** 	}
+ 148:../Library/i2c/I2C.cpp **** 							
+ 149:../Library/i2c/I2C.cpp **** 	if(error==1)return 0;
+ 335              		.loc 1 149 0
+ 336 0220 010020E2 		eor	r0, r0, #1
+ 337              	.LVL43:
+  52:../Library/i2c/I2C.cpp **** 	while(!exit && !error){
+ 338              		.loc 1 52 0
+ 339 0224 FF0000E2 		and	r0, r0, #255
+ 340              	.LVL44:
+ 341              	.LBE4:
+ 150:../Library/i2c/I2C.cpp **** 	else return 1;
+ 151:../Library/i2c/I2C.cpp **** }
+ 342              		.loc 1 151 0
+ 343 0228 F001BDE8 		ldmfd	sp!, {r4, r5, r6, r7, r8}
+ 344 022c 1EFF2FE1 		bx	lr
+ 345              	.L43:
+ 346              		.align	2
+ 347              	.L42:
+ 348 0230 00C001E0 		.word	-536756224
+ 349              		.cfi_endproc
+ 350              	.LFE7:
+ 352              		.global	_ZN3I2CC1Ei
+ 353              		.set	_ZN3I2CC1Ei,_ZN3I2CC2Ei
+ 354              		.global	_ZN3I2CC1Ev
+ 355              		.set	_ZN3I2CC1Ev,_ZN3I2CC2Ev
+ 356              	.Letext0:
+ 357              		.file 2 "../Library/i2c/I2C.h"
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 I2C.cpp
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cc3Q08II.s:5      .text:0000000000000000 $a
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cc3Q08II.s:8      .text:0000000000000000 _ZN3I2CC2Ei
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cc3Q08II.s:30     .text:0000000000000008 _ZN3I2CC2Ev
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cc3Q08II.s:47     .text:000000000000000c _ZN3I2C9configureEv
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cc3Q08II.s:72     .text:0000000000000030 $d
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cc3Q08II.s:77     .text:0000000000000038 $a
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cc3Q08II.s:80     .text:0000000000000038 _ZN3I2C4sendEcPccc
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cc3Q08II.s:348    .text:0000000000000230 $d
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cc3Q08II.s:8      .text:0000000000000000 _ZN3I2CC1Ei
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cc3Q08II.s:30     .text:0000000000000008 _ZN3I2CC1Ev
+                     .debug_frame:0000000000000010 $d
+
+NO UNDEFINED SYMBOLS

@@ -1,0 +1,953 @@
+   1              		.file	"EM408.cpp"
+   2              		.text
+   3              	.Ltext0:
+   4              		.cfi_sections	.debug_frame
+   5              		.align	2
+   6              		.global	_ZN6cEM408C2Ejj
+   8              	_ZN6cEM408C2Ejj:
+   9              	.LFB1:
+  10              		.file 1 "../Library/em408/EM408.cpp"
+   1:../Library/em408/EM408.cpp **** /*
+   2:../Library/em408/EM408.cpp **** 	EM408 Library
+   3:../Library/em408/EM408.cpp **** 	
+   4:../Library/em408/EM408.cpp **** 	Assumes enable pin is on port 0.
+   5:../Library/em408/EM408.cpp **** 	
+   6:../Library/em408/EM408.cpp **** 	created 20 Aug 2009
+   7:../Library/em408/EM408.cpp **** 	by Ryan Owens
+   8:../Library/em408/EM408.cpp **** 	http://www.sparkfun.com
+   9:../Library/em408/EM408.cpp **** 	
+  10:../Library/em408/EM408.cpp **** 	Example code:
+  11:../Library/em408/EM408.cpp **** 	char c;
+  12:../Library/em408/EM408.cpp **** 	char final_message[100];
+  13:../Library/em408/EM408.cpp **** 	char values[100];
+  14:../Library/em408/EM408.cpp **** 	
+  15:../Library/em408/EM408.cpp **** 	gps.begin(4800);
+  16:../Library/em408/EM408.cpp **** 	gps.on();
+  17:../Library/em408/EM408.cpp **** 	delay_ms(500);
+  18:../Library/em408/EM408.cpp **** 	gps.disable();
+  19:../Library/em408/EM408.cpp **** 	delay_ms(100);
+  20:../Library/em408/EM408.cpp **** 	gps.enable(4,1);
+  21:../Library/em408/EM408.cpp **** 	delay_ms(1000);	
+  22:../Library/em408/EM408.cpp **** 	c=getc1();
+  23:../Library/em408/EM408.cpp **** 	*final_message = '\0';
+  24:../Library/em408/EM408.cpp **** 	*values = '\0';
+  25:../Library/em408/EM408.cpp **** 	while(c != '\r')
+  26:../Library/em408/EM408.cpp **** 	{
+  27:../Library/em408/EM408.cpp **** 		if(c!='\n')
+  28:../Library/em408/EM408.cpp **** 		{
+  29:../Library/em408/EM408.cpp **** 			sprintf(final_message, "%c", c);
+  30:../Library/em408/EM408.cpp **** 			strcat(values, final_message);
+  31:../Library/em408/EM408.cpp **** 		}
+  32:../Library/em408/EM408.cpp **** 		c=getc1();
+  33:../Library/em408/EM408.cpp **** 	}
+  34:../Library/em408/EM408.cpp **** 	status=gps.parse(values);
+  35:../Library/em408/EM408.cpp **** 	if(status>0)
+  36:../Library/em408/EM408.cpp **** 	{
+  37:../Library/em408/EM408.cpp **** 		rprintf("\r\rParse Result: %d\r", status);
+  38:../Library/em408/EM408.cpp **** 		rprintf("Time: %s\r",gps.data.time);
+  39:../Library/em408/EM408.cpp **** 		rprintf("Status: %s\r", gps.data.status);
+  40:../Library/em408/EM408.cpp **** 		rprintf("Lat: %s %s\r", gps.data.latitude.position, gps.data.latitude.direction);
+  41:../Library/em408/EM408.cpp **** 		rprintf("Long: %s %s\r", gps.data.longitude.position, gps.data.longitude.direction);
+  42:../Library/em408/EM408.cpp **** 	}	
+  43:../Library/em408/EM408.cpp ****  
+  44:../Library/em408/EM408.cpp **** */
+  45:../Library/em408/EM408.cpp **** #include "EM408.h"
+  46:../Library/em408/EM408.cpp **** #include <stdlib.h>
+  47:../Library/em408/EM408.cpp **** #include <stdio.h>
+  48:../Library/em408/EM408.cpp **** #include "string.h"
+  49:../Library/em408/EM408.cpp **** #include "LPC21xx_SFE.h"
+  50:../Library/em408/EM408.cpp **** #include "main.h"
+  51:../Library/em408/EM408.cpp **** 
+  52:../Library/em408/EM408.cpp **** extern "C"{
+  53:../Library/em408/EM408.cpp **** #include "serial.h"
+  54:../Library/em408/EM408.cpp **** #include "rprintf.h"
+  55:../Library/em408/EM408.cpp **** //#include "delay.h"
+  56:../Library/em408/EM408.cpp **** }
+  57:../Library/em408/EM408.cpp **** 
+  58:../Library/em408/EM408.cpp **** #define GLOBALOBJECT
+  59:../Library/em408/EM408.cpp **** //#define DEBUG
+  60:../Library/em408/EM408.cpp **** 
+  61:../Library/em408/EM408.cpp **** cEM408 gps(1, 12);
+  62:../Library/em408/EM408.cpp **** 
+  63:../Library/em408/EM408.cpp **** cEM408::cEM408(unsigned int port, unsigned int en_pin)
+  11              		.loc 1 63 0
+  12              		.cfi_startproc
+  13              		@ Function supports interworking.
+  14              		@ args = 0, pretend = 0, frame = 0
+  15              		@ frame_needed = 0, uses_anonymous_args = 0
+  16              		@ link register save eliminated.
+  17              	.LVL0:
+  18              	.LBB9:
+  64:../Library/em408/EM408.cpp **** {
+  65:../Library/em408/EM408.cpp **** 	_en_pin=en_pin;
+  19              		.loc 1 65 0
+  20 0000 942080E5 		str	r2, [r0, #148]
+  66:../Library/em408/EM408.cpp **** 	_port=port;
+  21              		.loc 1 66 0
+  22 0004 981080E5 		str	r1, [r0, #152]
+  23              	.LBE9:
+  67:../Library/em408/EM408.cpp **** }
+  24              		.loc 1 67 0
+  25 0008 1EFF2FE1 		bx	lr
+  26              		.cfi_endproc
+  27              	.LFE1:
+  29              		.align	2
+  30              		.global	_ZN6cEM4085beginEj
+  32              	_ZN6cEM4085beginEj:
+  33              	.LFB3:
+  68:../Library/em408/EM408.cpp **** 
+  69:../Library/em408/EM408.cpp **** void cEM408::begin(unsigned int baud_rate)
+  70:../Library/em408/EM408.cpp **** {
+  34              		.loc 1 70 0
+  35              		.cfi_startproc
+  36              		@ Function supports interworking.
+  37              		@ args = 0, pretend = 0, frame = 0
+  38              		@ frame_needed = 0, uses_anonymous_args = 0
+  39              	.LVL1:
+  40 000c 30402DE9 		stmfd	sp!, {r4, r5, lr}
+  41              	.LCFI0:
+  42              		.cfi_def_cfa_offset 12
+  43              		.cfi_offset 14, -4
+  44              		.cfi_offset 5, -8
+  45              		.cfi_offset 4, -12
+  46              		.loc 1 70 0
+  47 0010 0040A0E1 		mov	r4, r0
+  71:../Library/em408/EM408.cpp **** 	//Make sure the Enable pin is set up correctly
+  72:../Library/em408/EM408.cpp **** 	PINSEL0 &= ~(3<<((_en_pin+1)*2));	//Set the pin as GPIO in the Pin Select Register
+  48              		.loc 1 72 0
+  49 0014 942094E5 		ldr	r2, [r4, #148]
+  50 0018 60309FE5 		ldr	r3, .L5
+  70:../Library/em408/EM408.cpp **** {
+  51              		.loc 1 70 0
+  52 001c 0100A0E1 		mov	r0, r1
+  53              	.LVL2:
+  54              		.loc 1 72 0
+  55 0020 00C093E5 		ldr	ip, [r3, #0]
+  56 0024 011082E2 		add	r1, r2, #1
+  57              	.LVL3:
+  58 0028 8110A0E1 		mov	r1, r1, asl #1
+  59 002c 0350A0E3 		mov	r5, #3
+  60 0030 1511CCE1 		bic	r1, ip, r5, asl r1
+  73:../Library/em408/EM408.cpp **** 	IODIR0 |= (1<<_en_pin);	//Sets the enable pin as an output
+  61              		.loc 1 73 0
+  62 0034 01C0A0E3 		mov	ip, #1
+  63 0038 1C22A0E1 		mov	r2, ip, asl r2
+  72:../Library/em408/EM408.cpp **** 	PINSEL0 &= ~(3<<((_en_pin+1)*2));	//Set the pin as GPIO in the Pin Select Register
+  64              		.loc 1 72 0
+  65 003c 001083E5 		str	r1, [r3, #0]
+  66              		.loc 1 73 0
+  67 0040 013943E2 		sub	r3, r3, #16384
+  68 0044 081093E5 		ldr	r1, [r3, #8]
+  69 0048 011082E1 		orr	r1, r2, r1
+  70 004c 081083E5 		str	r1, [r3, #8]
+  74:../Library/em408/EM408.cpp **** 	IOCLR0 = (1<<_en_pin);		//Turns the GPS module off by default.
+  71              		.loc 1 74 0
+  72 0050 0C2083E5 		str	r2, [r3, #12]
+  75:../Library/em408/EM408.cpp **** 	
+  76:../Library/em408/EM408.cpp **** 	if(_port == 0)
+  73              		.loc 1 76 0
+  74 0054 983094E5 		ldr	r3, [r4, #152]
+  75 0058 000053E3 		cmp	r3, #0
+  76 005c 0100001A 		bne	.L3
+  77:../Library/em408/EM408.cpp **** 		init_serial0(baud_rate);
+  77              		.loc 1 77 0
+  78 0060 FEFFFFEB 		bl	init_serial0
+  79              	.LVL4:
+  80 0064 010000EA 		b	.L4
+  81              	.LVL5:
+  82              	.L3:
+  78:../Library/em408/EM408.cpp **** 	else if(_port == 1)
+  83              		.loc 1 78 0
+  84 0068 010053E3 		cmp	r3, #1
+  79:../Library/em408/EM408.cpp **** 		init_serial1(baud_rate);
+  85              		.loc 1 79 0
+  86 006c FEFFFF0B 		bleq	init_serial1
+  87              	.LVL6:
+  88              	.L4:
+  80:../Library/em408/EM408.cpp **** 		
+  81:../Library/em408/EM408.cpp **** 	updated=0;
+  89              		.loc 1 81 0
+  90 0070 0030A0E3 		mov	r3, #0
+  91 0074 9030C4E5 		strb	r3, [r4, #144]
+  82:../Library/em408/EM408.cpp **** }
+  92              		.loc 1 82 0
+  93 0078 3040BDE8 		ldmfd	sp!, {r4, r5, lr}
+  94 007c 1EFF2FE1 		bx	lr
+  95              	.L6:
+  96              		.align	2
+  97              	.L5:
+  98 0080 00C002E0 		.word	-536690688
+  99              		.cfi_endproc
+ 100              	.LFE3:
+ 102              		.align	2
+ 103              		.global	_ZN6cEM4082onEv
+ 105              	_ZN6cEM4082onEv:
+ 106              	.LFB4:
+  83:../Library/em408/EM408.cpp **** 
+  84:../Library/em408/EM408.cpp **** void cEM408::on(void)
+  85:../Library/em408/EM408.cpp **** {
+ 107              		.loc 1 85 0
+ 108              		.cfi_startproc
+ 109              		@ Function supports interworking.
+ 110              		@ args = 0, pretend = 0, frame = 0
+ 111              		@ frame_needed = 0, uses_anonymous_args = 0
+ 112              		@ link register save eliminated.
+ 113              	.LVL7:
+  86:../Library/em408/EM408.cpp **** 	IOSET0 = (1<<_en_pin);	//Turns the GPS module on by setting the enable pin high.
+ 114              		.loc 1 86 0
+ 115 0084 943090E5 		ldr	r3, [r0, #148]
+ 116 0088 0120A0E3 		mov	r2, #1
+ 117 008c 1223A0E1 		mov	r2, r2, asl r3
+ 118 0090 04309FE5 		ldr	r3, .L8
+ 119 0094 042083E5 		str	r2, [r3, #4]
+  87:../Library/em408/EM408.cpp **** 	//delay_ms(500);
+  88:../Library/em408/EM408.cpp **** }
+ 120              		.loc 1 88 0
+ 121 0098 1EFF2FE1 		bx	lr
+ 122              	.L9:
+ 123              		.align	2
+ 124              	.L8:
+ 125 009c 008002E0 		.word	-536707072
+ 126              		.cfi_endproc
+ 127              	.LFE4:
+ 129              		.align	2
+ 130              		.global	_ZN6cEM4083offEv
+ 132              	_ZN6cEM4083offEv:
+ 133              	.LFB5:
+  89:../Library/em408/EM408.cpp **** 
+  90:../Library/em408/EM408.cpp **** void cEM408::off(void)
+  91:../Library/em408/EM408.cpp **** {
+ 134              		.loc 1 91 0
+ 135              		.cfi_startproc
+ 136              		@ Function supports interworking.
+ 137              		@ args = 0, pretend = 0, frame = 0
+ 138              		@ frame_needed = 0, uses_anonymous_args = 0
+ 139              		@ link register save eliminated.
+ 140              	.LVL8:
+  92:../Library/em408/EM408.cpp **** 	IOCLR0 = (1<<_en_pin);	//Turns the GPS module off by setting the enable pin low.
+ 141              		.loc 1 92 0
+ 142 00a0 943090E5 		ldr	r3, [r0, #148]
+ 143 00a4 0120A0E3 		mov	r2, #1
+ 144 00a8 1223A0E1 		mov	r2, r2, asl r3
+ 145 00ac 04309FE5 		ldr	r3, .L11
+ 146 00b0 0C2083E5 		str	r2, [r3, #12]
+  93:../Library/em408/EM408.cpp **** }
+ 147              		.loc 1 93 0
+ 148 00b4 1EFF2FE1 		bx	lr
+ 149              	.L12:
+ 150              		.align	2
+ 151              	.L11:
+ 152 00b8 008002E0 		.word	-536707072
+ 153              		.cfi_endproc
+ 154              	.LFE5:
+ 156              		.align	2
+ 157              		.global	_ZN6cEM4085parseEPc
+ 159              	_ZN6cEM4085parseEPc:
+ 160              	.LFB10:
+  94:../Library/em408/EM408.cpp **** 
+  95:../Library/em408/EM408.cpp **** void cEM408::enable(unsigned const char type, unsigned const char freq)
+  96:../Library/em408/EM408.cpp **** {
+  97:../Library/em408/EM408.cpp **** 	configure(type, freq);
+  98:../Library/em408/EM408.cpp **** }
+  99:../Library/em408/EM408.cpp **** 
+ 100:../Library/em408/EM408.cpp **** void cEM408::enable(void)
+ 101:../Library/em408/EM408.cpp **** {
+ 102:../Library/em408/EM408.cpp **** 	for(unsigned char type=0; type < 6; type++)
+ 103:../Library/em408/EM408.cpp **** 	{
+ 104:../Library/em408/EM408.cpp **** 		configure((unsigned const char)type, 1);	//Disable all of the GPS messages by setting frequencies
+ 105:../Library/em408/EM408.cpp **** 	}
+ 106:../Library/em408/EM408.cpp **** }
+ 107:../Library/em408/EM408.cpp **** 
+ 108:../Library/em408/EM408.cpp **** void cEM408::disable(void)
+ 109:../Library/em408/EM408.cpp **** {
+ 110:../Library/em408/EM408.cpp **** 	for(unsigned char type=0; type < 6; type++)
+ 111:../Library/em408/EM408.cpp **** 	{
+ 112:../Library/em408/EM408.cpp **** 		configure((unsigned const char)type, 0);	//Disable all of the GPS messages by setting frequencies
+ 113:../Library/em408/EM408.cpp **** 	}
+ 114:../Library/em408/EM408.cpp **** }
+ 115:../Library/em408/EM408.cpp **** 
+ 116:../Library/em408/EM408.cpp **** void cEM408::disable(unsigned const char type)
+ 117:../Library/em408/EM408.cpp **** {
+ 118:../Library/em408/EM408.cpp **** 	configure(type, 0);	//Disable the message type by setting the update frequency to 0
+ 119:../Library/em408/EM408.cpp **** }
+ 120:../Library/em408/EM408.cpp **** 
+ 121:../Library/em408/EM408.cpp **** int cEM408::parse(char * inmessage)
+ 122:../Library/em408/EM408.cpp **** {
+ 161              		.loc 1 122 0
+ 162              		.cfi_startproc
+ 163              		@ Function supports interworking.
+ 164              		@ args = 0, pretend = 0, frame = 260
+ 165              		@ frame_needed = 0, uses_anonymous_args = 0
+ 166              	.LVL9:
+ 167 00bc F0412DE9 		stmfd	sp!, {r4, r5, r6, r7, r8, lr}
+ 168              	.LCFI1:
+ 169              		.cfi_def_cfa_offset 24
+ 170              		.cfi_offset 14, -4
+ 171              		.cfi_offset 8, -8
+ 172              		.cfi_offset 7, -12
+ 173              		.cfi_offset 6, -16
+ 174              		.cfi_offset 5, -20
+ 175              		.cfi_offset 4, -24
+ 176 00c0 41DF4DE2 		sub	sp, sp, #260
+ 177              	.LCFI2:
+ 178              		.cfi_def_cfa_offset 284
+ 179              	.LBB10:
+ 123:../Library/em408/EM408.cpp **** 	char delim[] = ",";	//GPS message delimiter is a comma
+ 180              		.loc 1 123 0
+ 181 00c4 2C30A0E3 		mov	r3, #44
+ 182 00c8 012C8DE2 		add	r2, sp, #256
+ 183 00cc B030C2E1 		strh	r3, [r2, #0]	@ movhi
+ 184              	.LVL10:
+ 185              	.LBE10:
+ 122:../Library/em408/EM408.cpp **** {
+ 186              		.loc 1 122 0
+ 187 00d0 0040A0E1 		mov	r4, r0
+ 188              	.LBB12:
+ 124:../Library/em408/EM408.cpp **** 	char msg_cksum=0;
+ 125:../Library/em408/EM408.cpp **** 	char calc_cksum=0;
+ 126:../Library/em408/EM408.cpp **** 	char ck_msg[256];
+ 127:../Library/em408/EM408.cpp **** 	
+ 128:../Library/em408/EM408.cpp **** 	msg_cksum = (int)strtol(&inmessage[strlen(inmessage)-2], NULL, 16);
+ 189              		.loc 1 128 0
+ 190 00d4 0100A0E1 		mov	r0, r1
+ 191              	.LVL11:
+ 192              	.LBE12:
+ 122:../Library/em408/EM408.cpp **** {
+ 193              		.loc 1 122 0
+ 194 00d8 0150A0E1 		mov	r5, r1
+ 195              	.LBB13:
+ 196              		.loc 1 128 0
+ 197 00dc FEFFFFEB 		bl	strlen
+ 198              	.LVL12:
+ 199 00e0 020040E2 		sub	r0, r0, #2
+ 200 00e4 0010A0E3 		mov	r1, #0
+ 201 00e8 1020A0E3 		mov	r2, #16
+ 202 00ec 000085E0 		add	r0, r5, r0
+ 203 00f0 FEFFFFEB 		bl	strtol
+ 129:../Library/em408/EM408.cpp **** 	//rprintf("\r%02x\r", msg_cksum);	
+ 130:../Library/em408/EM408.cpp **** 
+ 131:../Library/em408/EM408.cpp **** 	*ck_msg='\0';
+ 204              		.loc 1 131 0
+ 205 00f4 0070A0E3 		mov	r7, #0
+ 128:../Library/em408/EM408.cpp **** 	msg_cksum = (int)strtol(&inmessage[strlen(inmessage)-2], NULL, 16);
+ 206              		.loc 1 128 0
+ 207 00f8 FF8000E2 		and	r8, r0, #255
+ 208              	.LVL13:
+ 209              		.loc 1 131 0
+ 210 00fc 416F8DE2 		add	r6, sp, #260
+ 132:../Library/em408/EM408.cpp **** 	strncat(ck_msg, &inmessage[1], strlen(inmessage)-4); 
+ 211              		.loc 1 132 0
+ 212 0100 0500A0E1 		mov	r0, r5
+ 131:../Library/em408/EM408.cpp **** 	*ck_msg='\0';
+ 213              		.loc 1 131 0
+ 214 0104 047166E5 		strb	r7, [r6, #-260]!
+ 215              		.loc 1 132 0
+ 216 0108 FEFFFFEB 		bl	strlen
+ 217 010c 011085E2 		add	r1, r5, #1
+ 218 0110 042040E2 		sub	r2, r0, #4
+ 219 0114 0D00A0E1 		mov	r0, sp
+ 220 0118 FEFFFFEB 		bl	strncat
+ 221              	.LVL14:
+ 222              	.LBB11:
+ 133:../Library/em408/EM408.cpp **** 	//rprintf("%s\r", ck_msg);
+ 134:../Library/em408/EM408.cpp **** 	GPS_CHECKSUM(ck_msg, calc_cksum);
+ 223              		.loc 1 134 0
+ 224 011c 0D00A0E1 		mov	r0, sp
+ 225 0120 FEFFFFEB 		bl	strlen
+ 226 0124 0730A0E1 		mov	r3, r7
+ 227 0128 020000EA 		b	.L14
+ 228              	.LVL15:
+ 229              	.L15:
+ 230              		.loc 1 134 0 is_stmt 0 discriminator 2
+ 231 012c 0720DDE7 		ldrb	r2, [sp, r7]	@ zero_extendqisi2
+ 232 0130 017087E2 		add	r7, r7, #1
+ 233              	.LVL16:
+ 234 0134 023023E0 		eor	r3, r3, r2
+ 235              	.LVL17:
+ 236              	.L14:
+ 237              		.loc 1 134 0 discriminator 1
+ 238 0138 000057E1 		cmp	r7, r0
+ 239 013c FAFFFF1A 		bne	.L15
+ 240              	.LBE11:
+ 135:../Library/em408/EM408.cpp **** 	//rprintf("%02x\r", calc_cksum);
+ 136:../Library/em408/EM408.cpp **** 	if(calc_cksum != msg_cksum)return 0;
+ 241              		.loc 1 136 0 is_stmt 1
+ 242 0140 080053E1 		cmp	r3, r8
+ 243 0144 0000A013 		movne	r0, #0
+ 244 0148 3500001A 		bne	.L16
+ 137:../Library/em408/EM408.cpp **** 	
+ 138:../Library/em408/EM408.cpp **** 	strcpy(&ck_msg[0], inmessage);
+ 245              		.loc 1 138 0
+ 246 014c 0510A0E1 		mov	r1, r5
+ 247 0150 0D00A0E1 		mov	r0, sp
+ 248 0154 FEFFFFEB 		bl	strcpy
+ 249              	.LVL18:
+ 139:../Library/em408/EM408.cpp **** 	char * result = NULL;
+ 140:../Library/em408/EM408.cpp **** 	result = strtok( &ck_msg[0], delim);
+ 250              		.loc 1 140 0
+ 251 0158 011C8DE2 		add	r1, sp, #256
+ 252 015c 0D00A0E1 		mov	r0, sp
+ 253 0160 FEFFFFEB 		bl	strtok
+ 254              	.LVL19:
+ 141:../Library/em408/EM408.cpp **** 	data.time = strtok(NULL, delim);
+ 255              		.loc 1 141 0
+ 256 0164 011C8DE2 		add	r1, sp, #256
+ 257 0168 0000A0E3 		mov	r0, #0
+ 258 016c FEFFFFEB 		bl	strtok
+ 142:../Library/em408/EM408.cpp **** 	data.status = strtok(NULL, delim);
+ 259              		.loc 1 142 0
+ 260 0170 011C8DE2 		add	r1, sp, #256
+ 141:../Library/em408/EM408.cpp **** 	data.time = strtok(NULL, delim);
+ 261              		.loc 1 141 0
+ 262 0174 100084E5 		str	r0, [r4, #16]
+ 263              		.loc 1 142 0
+ 264 0178 0000A0E3 		mov	r0, #0
+ 265 017c FEFFFFEB 		bl	strtok
+ 266 0180 140084E5 		str	r0, [r4, #20]
+ 143:../Library/em408/EM408.cpp **** 	if(*data.status == 'A')
+ 267              		.loc 1 143 0
+ 268 0184 0030D0E5 		ldrb	r3, [r0, #0]	@ zero_extendqisi2
+ 269 0188 410053E3 		cmp	r3, #65
+ 144:../Library/em408/EM408.cpp **** 	{
+ 145:../Library/em408/EM408.cpp **** 		data.latitude.position = strtok(NULL, delim);
+ 270              		.loc 1 145 0
+ 271 018c 0000A0E3 		mov	r0, #0
+ 143:../Library/em408/EM408.cpp **** 	if(*data.status == 'A')
+ 272              		.loc 1 143 0
+ 273 0190 2300001A 		bne	.L16
+ 274              		.loc 1 145 0
+ 275 0194 011C8DE2 		add	r1, sp, #256
+ 276 0198 FEFFFFEB 		bl	strtok
+ 146:../Library/em408/EM408.cpp **** 		data.latitude.direction = strtok(NULL, delim);
+ 277              		.loc 1 146 0
+ 278 019c 011C8DE2 		add	r1, sp, #256
+ 145:../Library/em408/EM408.cpp **** 		data.latitude.position = strtok(NULL, delim);
+ 279              		.loc 1 145 0
+ 280 01a0 000084E5 		str	r0, [r4, #0]
+ 281              		.loc 1 146 0
+ 282 01a4 0000A0E3 		mov	r0, #0
+ 283 01a8 FEFFFFEB 		bl	strtok
+ 147:../Library/em408/EM408.cpp **** 		data.longitude.position = strtok(NULL, delim);
+ 284              		.loc 1 147 0
+ 285 01ac 011C8DE2 		add	r1, sp, #256
+ 146:../Library/em408/EM408.cpp **** 		data.latitude.direction = strtok(NULL, delim);
+ 286              		.loc 1 146 0
+ 287 01b0 040084E5 		str	r0, [r4, #4]
+ 288              		.loc 1 147 0
+ 289 01b4 0000A0E3 		mov	r0, #0
+ 290 01b8 FEFFFFEB 		bl	strtok
+ 148:../Library/em408/EM408.cpp **** 		data.longitude.direction = strtok(NULL, delim);
+ 291              		.loc 1 148 0
+ 292 01bc 011C8DE2 		add	r1, sp, #256
+ 147:../Library/em408/EM408.cpp **** 		data.longitude.position = strtok(NULL, delim);
+ 293              		.loc 1 147 0
+ 294 01c0 080084E5 		str	r0, [r4, #8]
+ 295              		.loc 1 148 0
+ 296 01c4 0000A0E3 		mov	r0, #0
+ 297 01c8 FEFFFFEB 		bl	strtok
+ 149:../Library/em408/EM408.cpp **** 		data.speed = strtok(NULL, delim);
+ 298              		.loc 1 149 0
+ 299 01cc 011C8DE2 		add	r1, sp, #256
+ 148:../Library/em408/EM408.cpp **** 		data.longitude.direction = strtok(NULL, delim);
+ 300              		.loc 1 148 0
+ 301 01d0 0C0084E5 		str	r0, [r4, #12]
+ 302              		.loc 1 149 0
+ 303 01d4 0000A0E3 		mov	r0, #0
+ 304 01d8 FEFFFFEB 		bl	strtok
+ 150:../Library/em408/EM408.cpp **** 		data.heading = strtok(NULL, delim);
+ 305              		.loc 1 150 0
+ 306 01dc 011C8DE2 		add	r1, sp, #256
+ 149:../Library/em408/EM408.cpp **** 		data.speed = strtok(NULL, delim);
+ 307              		.loc 1 149 0
+ 308 01e0 180084E5 		str	r0, [r4, #24]
+ 309              		.loc 1 150 0
+ 310 01e4 0000A0E3 		mov	r0, #0
+ 311 01e8 FEFFFFEB 		bl	strtok
+ 151:../Library/em408/EM408.cpp **** 		data.date = strtok(NULL, delim);
+ 312              		.loc 1 151 0
+ 313 01ec 011C8DE2 		add	r1, sp, #256
+ 150:../Library/em408/EM408.cpp **** 		data.heading = strtok(NULL, delim);
+ 314              		.loc 1 150 0
+ 315 01f0 1C0084E5 		str	r0, [r4, #28]
+ 316              		.loc 1 151 0
+ 317 01f4 0000A0E3 		mov	r0, #0
+ 318 01f8 FEFFFFEB 		bl	strtok
+ 152:../Library/em408/EM408.cpp **** 		data.mag = strtok(NULL, delim);
+ 319              		.loc 1 152 0
+ 320 01fc 011C8DE2 		add	r1, sp, #256
+ 151:../Library/em408/EM408.cpp **** 		data.date = strtok(NULL, delim);
+ 321              		.loc 1 151 0
+ 322 0200 200084E5 		str	r0, [r4, #32]
+ 323              		.loc 1 152 0
+ 324 0204 0000A0E3 		mov	r0, #0
+ 325 0208 FEFFFFEB 		bl	strtok
+ 153:../Library/em408/EM408.cpp **** 		data.cksum = strtok(NULL, delim);
+ 326              		.loc 1 153 0
+ 327 020c 011C8DE2 		add	r1, sp, #256
+ 152:../Library/em408/EM408.cpp **** 		data.mag = strtok(NULL, delim);
+ 328              		.loc 1 152 0
+ 329 0210 240084E5 		str	r0, [r4, #36]
+ 330              		.loc 1 153 0
+ 331 0214 0000A0E3 		mov	r0, #0
+ 332 0218 FEFFFFEB 		bl	strtok
+ 333 021c 280084E5 		str	r0, [r4, #40]
+ 154:../Library/em408/EM408.cpp **** 	}
+ 155:../Library/em408/EM408.cpp **** 	else return 0;	
+ 156:../Library/em408/EM408.cpp **** 	
+ 157:../Library/em408/EM408.cpp **** 	return 1;
+ 334              		.loc 1 157 0
+ 335 0220 0100A0E3 		mov	r0, #1
+ 336              	.L16:
+ 337              	.LBE13:
+ 158:../Library/em408/EM408.cpp **** }
+ 338              		.loc 1 158 0
+ 339 0224 41DF8DE2 		add	sp, sp, #260
+ 340 0228 F041BDE8 		ldmfd	sp!, {r4, r5, r6, r7, r8, lr}
+ 341 022c 1EFF2FE1 		bx	lr
+ 342              		.cfi_endproc
+ 343              	.LFE10:
+ 345              		.align	2
+ 346              		.global	_ZN6cEM4089configureEhh
+ 348              	_ZN6cEM4089configureEhh:
+ 349              	.LFB11:
+ 159:../Library/em408/EM408.cpp **** 
+ 160:../Library/em408/EM408.cpp **** void cEM408::configure(unsigned const char type, unsigned const char freq)
+ 161:../Library/em408/EM408.cpp **** {
+ 350              		.loc 1 161 0
+ 351              		.cfi_startproc
+ 352              		@ Function supports interworking.
+ 353              		@ args = 0, pretend = 0, frame = 20
+ 354              		@ frame_needed = 0, uses_anonymous_args = 0
+ 355              	.LVL20:
+ 356 0230 30402DE9 		stmfd	sp!, {r4, r5, lr}
+ 357              	.LCFI3:
+ 358              		.cfi_def_cfa_offset 12
+ 359              		.cfi_offset 14, -4
+ 360              		.cfi_offset 5, -8
+ 361              		.cfi_offset 4, -12
+ 362 0234 0230A0E1 		mov	r3, r2
+ 363 0238 14D04DE2 		sub	sp, sp, #20
+ 364              	.LCFI4:
+ 365              		.cfi_def_cfa_offset 32
+ 366              		.loc 1 161 0
+ 367 023c FF2001E2 		and	r2, r1, #255
+ 368              	.LVL21:
+ 369 0240 FF3003E2 		and	r3, r3, #255
+ 370              	.LBB14:
+ 162:../Library/em408/EM408.cpp **** 	char gps_string[20];
+ 163:../Library/em408/EM408.cpp **** 	unsigned char cksum=0;
+ 164:../Library/em408/EM408.cpp **** 	
+ 165:../Library/em408/EM408.cpp **** 	sprintf( gps_string, "PSRF103,%02d,00,%02d,01", type, freq );
+ 371              		.loc 1 165 0
+ 372 0244 F4109FE5 		ldr	r1, .L28
+ 373              	.LVL22:
+ 374              	.LBE14:
+ 161:../Library/em408/EM408.cpp **** {
+ 375              		.loc 1 161 0
+ 376 0248 0040A0E1 		mov	r4, r0
+ 377              	.LBB22:
+ 378              		.loc 1 165 0
+ 379 024c 0D00A0E1 		mov	r0, sp
+ 380              	.LVL23:
+ 381 0250 FEFFFFEB 		bl	sprintf
+ 382              	.LVL24:
+ 383              	.LBB15:
+ 166:../Library/em408/EM408.cpp **** 	GPS_CHECKSUM(gps_string,cksum);
+ 384              		.loc 1 166 0
+ 385 0254 0D00A0E1 		mov	r0, sp
+ 386 0258 FEFFFFEB 		bl	strlen
+ 387 025c 0030A0E3 		mov	r3, #0
+ 388 0260 0350A0E1 		mov	r5, r3
+ 389 0264 020000EA 		b	.L20
+ 390              	.LVL25:
+ 391              	.L21:
+ 392              		.loc 1 166 0 is_stmt 0 discriminator 2
+ 393 0268 0320DDE7 		ldrb	r2, [sp, r3]	@ zero_extendqisi2
+ 394 026c 013083E2 		add	r3, r3, #1
+ 395              	.LVL26:
+ 396 0270 025025E0 		eor	r5, r5, r2
+ 397              	.LVL27:
+ 398              	.L20:
+ 399              		.loc 1 166 0 discriminator 1
+ 400 0274 000053E1 		cmp	r3, r0
+ 401 0278 FAFFFF1A 		bne	.L21
+ 402              	.LBE15:
+ 403              	.LBB16:
+ 167:../Library/em408/EM408.cpp **** 
+ 168:../Library/em408/EM408.cpp **** 	if(_port == 1)
+ 404              		.loc 1 168 0 is_stmt 1
+ 405 027c 983094E5 		ldr	r3, [r4, #152]
+ 406              	.LVL28:
+ 407 0280 010053E3 		cmp	r3, #1
+ 408 0284 1400001A 		bne	.L22
+ 409              	.LBB17:
+ 169:../Library/em408/EM408.cpp **** 	{
+ 170:../Library/em408/EM408.cpp **** 		putc_serial1('$');
+ 410              		.loc 1 170 0
+ 411 0288 2400A0E3 		mov	r0, #36
+ 412 028c FEFFFFEB 		bl	putc_serial1
+ 413              	.LVL29:
+ 414 0290 01404DE2 		sub	r4, sp, #1
+ 415              	.LVL30:
+ 416              	.LBB18:
+ 171:../Library/em408/EM408.cpp **** 		for(int i=0; gps_string[i] != '\0'; i++)
+ 417              		.loc 1 171 0
+ 418 0294 000000EA 		b	.L23
+ 419              	.LVL31:
+ 420              	.L24:
+ 172:../Library/em408/EM408.cpp **** 		{
+ 173:../Library/em408/EM408.cpp **** 			putc_serial1(gps_string[i]);
+ 421              		.loc 1 173 0 discriminator 2
+ 422 0298 FEFFFFEB 		bl	putc_serial1
+ 423              	.L23:
+ 171:../Library/em408/EM408.cpp **** 		for(int i=0; gps_string[i] != '\0'; i++)
+ 424              		.loc 1 171 0 discriminator 1
+ 425 029c 0100F4E5 		ldrb	r0, [r4, #1]!	@ zero_extendqisi2
+ 426 02a0 000050E3 		cmp	r0, #0
+ 427 02a4 FBFFFF1A 		bne	.L24
+ 428              	.LBE18:
+ 174:../Library/em408/EM408.cpp **** 		}
+ 175:../Library/em408/EM408.cpp **** 		putc_serial1('*');
+ 429              		.loc 1 175 0
+ 430 02a8 2A00A0E3 		mov	r0, #42
+ 431 02ac FEFFFFEB 		bl	putc_serial1
+ 176:../Library/em408/EM408.cpp **** 		putc_serial1(((cksum&0xF0)>>4)+'0');
+ 432              		.loc 1 176 0
+ 433 02b0 2502A0E1 		mov	r0, r5, lsr #4
+ 434 02b4 300080E2 		add	r0, r0, #48
+ 435 02b8 FEFFFFEB 		bl	putc_serial1
+ 177:../Library/em408/EM408.cpp **** 		putc_serial1((cksum&0x0F)+'0');
+ 436              		.loc 1 177 0
+ 437 02bc 0F0005E2 		and	r0, r5, #15
+ 438 02c0 300080E2 		add	r0, r0, #48
+ 439 02c4 FEFFFFEB 		bl	putc_serial1
+ 178:../Library/em408/EM408.cpp **** 		putc_serial1('\r');
+ 440              		.loc 1 178 0
+ 441 02c8 0D00A0E3 		mov	r0, #13
+ 442 02cc FEFFFFEB 		bl	putc_serial1
+ 179:../Library/em408/EM408.cpp **** 		putc_serial1('\n');
+ 443              		.loc 1 179 0
+ 444 02d0 0A00A0E3 		mov	r0, #10
+ 445 02d4 FEFFFFEB 		bl	putc_serial1
+ 446 02d8 150000EA 		b	.L19
+ 447              	.LVL32:
+ 448              	.L22:
+ 449              	.LBE17:
+ 450              	.LBB19:
+ 180:../Library/em408/EM408.cpp **** #ifdef	DEBUG		
+ 181:../Library/em408/EM408.cpp **** 		rprintf("$");
+ 182:../Library/em408/EM408.cpp **** 		for(int i=0; gps_string[i] != '\0'; i++)
+ 183:../Library/em408/EM408.cpp **** 		{
+ 184:../Library/em408/EM408.cpp **** 			rprintf("%c", gps_string[i]);
+ 185:../Library/em408/EM408.cpp **** 		}
+ 186:../Library/em408/EM408.cpp **** 		rprintf("*");
+ 187:../Library/em408/EM408.cpp **** 		rprintf("%c",((cksum&0xF0)>>4)+'0');
+ 188:../Library/em408/EM408.cpp **** 		rprintf("%c", (cksum&0x0F)+'0');
+ 189:../Library/em408/EM408.cpp **** 		rprintf("\r\n");
+ 190:../Library/em408/EM408.cpp **** #endif
+ 191:../Library/em408/EM408.cpp **** 	}
+ 192:../Library/em408/EM408.cpp **** 	else if(_port == 0)
+ 451              		.loc 1 192 0
+ 452 02dc 000053E3 		cmp	r3, #0
+ 453 02e0 1300001A 		bne	.L19
+ 454              	.LBB20:
+ 193:../Library/em408/EM408.cpp **** 	{
+ 194:../Library/em408/EM408.cpp **** 		putc_serial0('$');
+ 455              		.loc 1 194 0
+ 456 02e4 2400A0E3 		mov	r0, #36
+ 457 02e8 FEFFFFEB 		bl	putc_serial0
+ 458              	.LVL33:
+ 459 02ec 01404DE2 		sub	r4, sp, #1
+ 460              	.LVL34:
+ 461              	.LBB21:
+ 195:../Library/em408/EM408.cpp **** 		for(int i=0; gps_string[i] != '\0'; i++)
+ 462              		.loc 1 195 0
+ 463 02f0 000000EA 		b	.L26
+ 464              	.LVL35:
+ 465              	.L27:
+ 196:../Library/em408/EM408.cpp **** 		{
+ 197:../Library/em408/EM408.cpp **** 			putc_serial0(gps_string[i]);
+ 466              		.loc 1 197 0 discriminator 2
+ 467 02f4 FEFFFFEB 		bl	putc_serial0
+ 468              	.L26:
+ 195:../Library/em408/EM408.cpp **** 		for(int i=0; gps_string[i] != '\0'; i++)
+ 469              		.loc 1 195 0 discriminator 1
+ 470 02f8 0100F4E5 		ldrb	r0, [r4, #1]!	@ zero_extendqisi2
+ 471 02fc 000050E3 		cmp	r0, #0
+ 472 0300 FBFFFF1A 		bne	.L27
+ 473              	.LBE21:
+ 198:../Library/em408/EM408.cpp **** 		}
+ 199:../Library/em408/EM408.cpp **** 		putc_serial0('*');
+ 474              		.loc 1 199 0
+ 475 0304 2A00A0E3 		mov	r0, #42
+ 476 0308 FEFFFFEB 		bl	putc_serial0
+ 200:../Library/em408/EM408.cpp **** 		putc_serial0(((cksum&0xF0)>>4)+'0');
+ 477              		.loc 1 200 0
+ 478 030c 2502A0E1 		mov	r0, r5, lsr #4
+ 479 0310 300080E2 		add	r0, r0, #48
+ 480 0314 FEFFFFEB 		bl	putc_serial0
+ 201:../Library/em408/EM408.cpp **** 		putc_serial0((cksum&0x0F)+'0');
+ 481              		.loc 1 201 0
+ 482 0318 0F0005E2 		and	r0, r5, #15
+ 483 031c 300080E2 		add	r0, r0, #48
+ 484 0320 FEFFFFEB 		bl	putc_serial0
+ 202:../Library/em408/EM408.cpp **** 		putc_serial0('\r');
+ 485              		.loc 1 202 0
+ 486 0324 0D00A0E3 		mov	r0, #13
+ 487 0328 FEFFFFEB 		bl	putc_serial0
+ 203:../Library/em408/EM408.cpp **** 		putc_serial0('\n');
+ 488              		.loc 1 203 0
+ 489 032c 0A00A0E3 		mov	r0, #10
+ 490 0330 FEFFFFEB 		bl	putc_serial0
+ 491              	.L19:
+ 492              	.LBE20:
+ 493              	.LBE19:
+ 494              	.LBE16:
+ 495              	.LBE22:
+ 204:../Library/em408/EM408.cpp **** 	}	
+ 205:../Library/em408/EM408.cpp **** }	
+ 496              		.loc 1 205 0
+ 497 0334 14D08DE2 		add	sp, sp, #20
+ 498 0338 3040BDE8 		ldmfd	sp!, {r4, r5, lr}
+ 499 033c 1EFF2FE1 		bx	lr
+ 500              	.L29:
+ 501              		.align	2
+ 502              	.L28:
+ 503 0340 00000000 		.word	.LC0
+ 504              		.cfi_endproc
+ 505              	.LFE11:
+ 507              		.align	2
+ 508              		.global	_ZN6cEM4087disableEh
+ 510              	_ZN6cEM4087disableEh:
+ 511              	.LFB9:
+ 117:../Library/em408/EM408.cpp **** {
+ 512              		.loc 1 117 0
+ 513              		.cfi_startproc
+ 514              		@ Function supports interworking.
+ 515              		@ args = 0, pretend = 0, frame = 0
+ 516              		@ frame_needed = 0, uses_anonymous_args = 0
+ 517              		@ link register save eliminated.
+ 518              	.LVL36:
+ 118:../Library/em408/EM408.cpp **** 	configure(type, 0);	//Disable the message type by setting the update frequency to 0
+ 519              		.loc 1 118 0
+ 520 0344 FF1001E2 		and	r1, r1, #255
+ 521              	.LVL37:
+ 522 0348 0020A0E3 		mov	r2, #0
+ 119:../Library/em408/EM408.cpp **** }
+ 523              		.loc 1 119 0
+ 118:../Library/em408/EM408.cpp **** 	configure(type, 0);	//Disable the message type by setting the update frequency to 0
+ 524              		.loc 1 118 0
+ 525 034c FEFFFFEA 		b	_ZN6cEM4089configureEhh
+ 526              	.LVL38:
+ 527              		.cfi_endproc
+ 528              	.LFE9:
+ 530              		.align	2
+ 531              		.global	_ZN6cEM4087disableEv
+ 533              	_ZN6cEM4087disableEv:
+ 534              	.LFB8:
+ 109:../Library/em408/EM408.cpp **** {
+ 535              		.loc 1 109 0
+ 536              		.cfi_startproc
+ 537              		@ Function supports interworking.
+ 538              		@ args = 0, pretend = 0, frame = 0
+ 539              		@ frame_needed = 0, uses_anonymous_args = 0
+ 540              	.LVL39:
+ 541 0350 30402DE9 		stmfd	sp!, {r4, r5, lr}
+ 542              	.LCFI5:
+ 543              		.cfi_def_cfa_offset 12
+ 544              		.cfi_offset 14, -4
+ 545              		.cfi_offset 5, -8
+ 546              		.cfi_offset 4, -12
+ 109:../Library/em408/EM408.cpp **** {
+ 547              		.loc 1 109 0
+ 548 0354 0050A0E1 		mov	r5, r0
+ 549 0358 0040A0E3 		mov	r4, #0
+ 550              	.LVL40:
+ 551              	.L32:
+ 552              	.LBB23:
+ 112:../Library/em408/EM408.cpp **** 		configure((unsigned const char)type, 0);	//Disable all of the GPS messages by setting frequencies
+ 553              		.loc 1 112 0 discriminator 2
+ 554 035c 0410A0E1 		mov	r1, r4
+ 555 0360 0500A0E1 		mov	r0, r5
+ 556 0364 0020A0E3 		mov	r2, #0
+ 557 0368 014084E2 		add	r4, r4, #1
+ 558 036c FEFFFFEB 		bl	_ZN6cEM4089configureEhh
+ 110:../Library/em408/EM408.cpp **** 	for(unsigned char type=0; type < 6; type++)
+ 559              		.loc 1 110 0 discriminator 2
+ 560 0370 060054E3 		cmp	r4, #6
+ 561 0374 F8FFFF1A 		bne	.L32
+ 562              	.LBE23:
+ 114:../Library/em408/EM408.cpp **** }
+ 563              		.loc 1 114 0
+ 564 0378 3040BDE8 		ldmfd	sp!, {r4, r5, lr}
+ 565 037c 1EFF2FE1 		bx	lr
+ 566              		.cfi_endproc
+ 567              	.LFE8:
+ 569              		.align	2
+ 570              		.global	_ZN6cEM4086enableEv
+ 572              	_ZN6cEM4086enableEv:
+ 573              	.LFB7:
+ 101:../Library/em408/EM408.cpp **** {
+ 574              		.loc 1 101 0
+ 575              		.cfi_startproc
+ 576              		@ Function supports interworking.
+ 577              		@ args = 0, pretend = 0, frame = 0
+ 578              		@ frame_needed = 0, uses_anonymous_args = 0
+ 579              	.LVL41:
+ 580 0380 30402DE9 		stmfd	sp!, {r4, r5, lr}
+ 581              	.LCFI6:
+ 582              		.cfi_def_cfa_offset 12
+ 583              		.cfi_offset 14, -4
+ 584              		.cfi_offset 5, -8
+ 585              		.cfi_offset 4, -12
+ 101:../Library/em408/EM408.cpp **** {
+ 586              		.loc 1 101 0
+ 587 0384 0050A0E1 		mov	r5, r0
+ 588 0388 0040A0E3 		mov	r4, #0
+ 589              	.LVL42:
+ 590              	.L35:
+ 591              	.LBB24:
+ 104:../Library/em408/EM408.cpp **** 		configure((unsigned const char)type, 1);	//Disable all of the GPS messages by setting frequencies
+ 592              		.loc 1 104 0 discriminator 2
+ 593 038c 0410A0E1 		mov	r1, r4
+ 594 0390 0500A0E1 		mov	r0, r5
+ 595 0394 0120A0E3 		mov	r2, #1
+ 596 0398 014084E2 		add	r4, r4, #1
+ 597 039c FEFFFFEB 		bl	_ZN6cEM4089configureEhh
+ 102:../Library/em408/EM408.cpp **** 	for(unsigned char type=0; type < 6; type++)
+ 598              		.loc 1 102 0 discriminator 2
+ 599 03a0 060054E3 		cmp	r4, #6
+ 600 03a4 F8FFFF1A 		bne	.L35
+ 601              	.LBE24:
+ 106:../Library/em408/EM408.cpp **** }
+ 602              		.loc 1 106 0
+ 603 03a8 3040BDE8 		ldmfd	sp!, {r4, r5, lr}
+ 604 03ac 1EFF2FE1 		bx	lr
+ 605              		.cfi_endproc
+ 606              	.LFE7:
+ 608              		.align	2
+ 609              		.global	_ZN6cEM4086enableEhh
+ 611              	_ZN6cEM4086enableEhh:
+ 612              	.LFB6:
+  96:../Library/em408/EM408.cpp **** {
+ 613              		.loc 1 96 0
+ 614              		.cfi_startproc
+ 615              		@ Function supports interworking.
+ 616              		@ args = 0, pretend = 0, frame = 0
+ 617              		@ frame_needed = 0, uses_anonymous_args = 0
+ 618              		@ link register save eliminated.
+ 619              	.LVL43:
+  97:../Library/em408/EM408.cpp **** 	configure(type, freq);
+ 620              		.loc 1 97 0
+ 621 03b0 FF1001E2 		and	r1, r1, #255
+ 622              	.LVL44:
+ 623 03b4 FF2002E2 		and	r2, r2, #255
+ 624              	.LVL45:
+  98:../Library/em408/EM408.cpp **** }
+ 625              		.loc 1 98 0
+  97:../Library/em408/EM408.cpp **** 	configure(type, freq);
+ 626              		.loc 1 97 0
+ 627 03b8 FEFFFFEA 		b	_ZN6cEM4089configureEhh
+ 628              	.LVL46:
+ 629              		.cfi_endproc
+ 630              	.LFE6:
+ 632              		.section	.text.startup,"ax",%progbits
+ 633              		.align	2
+ 635              	_GLOBAL__sub_I_gps:
+ 636              	.LFB13:
+ 637              		.loc 1 205 0
+ 638              		.cfi_startproc
+ 639              		@ Function supports interworking.
+ 640              		@ args = 0, pretend = 0, frame = 0
+ 641              		@ frame_needed = 0, uses_anonymous_args = 0
+ 642              		@ link register save eliminated.
+ 643              	.LVL47:
+ 644              	.LBB25:
+ 645              	.LBB26:
+ 646              	.LBB27:
+  65:../Library/em408/EM408.cpp **** 	_en_pin=en_pin;
+ 647              		.loc 1 65 0
+ 648 0000 10309FE5 		ldr	r3, .L39
+ 649 0004 0C20A0E3 		mov	r2, #12
+ 650 0008 942083E5 		str	r2, [r3, #148]
+  66:../Library/em408/EM408.cpp **** 	_port=port;
+ 651              		.loc 1 66 0
+ 652 000c 0120A0E3 		mov	r2, #1
+ 653 0010 982083E5 		str	r2, [r3, #152]
+ 654              	.LBE27:
+ 655              	.LBE26:
+ 656              	.LBE25:
+ 657              		.loc 1 205 0
+ 658 0014 1EFF2FE1 		bx	lr
+ 659              	.L40:
+ 660              		.align	2
+ 661              	.L39:
+ 662 0018 00000000 		.word	.LANCHOR0
+ 663              		.cfi_endproc
+ 664              	.LFE13:
+ 666              		.section	.ctors,"aw",%progbits
+ 667              		.align	2
+ 668 0000 00000000 		.word	_GLOBAL__sub_I_gps
+ 669              		.global	gps
+ 670              		.global	_ZN6cEM408C1Ejj
+ 671              		.set	_ZN6cEM408C1Ejj,_ZN6cEM408C2Ejj
+ 672              		.section	.rodata.str1.1,"aMS",%progbits,1
+ 673              	.LC0:
+ 674 0000 50535246 		.ascii	"PSRF103,%02d,00,%02d,01\000"
+ 674      3130332C 
+ 674      25303264 
+ 674      2C30302C 
+ 674      25303264 
+ 675              		.bss
+ 676              		.align	2
+ 677              		.set	.LANCHOR0,. + 0
+ 680              	gps:
+ 681 0000 00000000 		.space	156
+ 681      00000000 
+ 681      00000000 
+ 681      00000000 
+ 681      00000000 
+ 682              		.text
+ 683              	.Letext0:
+ 684              		.file 2 "../Library/em408/EM408.h"
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 EM408.cpp
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cc1CsJsU.s:5      .text:0000000000000000 $a
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cc1CsJsU.s:8      .text:0000000000000000 _ZN6cEM408C2Ejj
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cc1CsJsU.s:32     .text:000000000000000c _ZN6cEM4085beginEj
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cc1CsJsU.s:98     .text:0000000000000080 $d
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cc1CsJsU.s:102    .text:0000000000000084 $a
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cc1CsJsU.s:105    .text:0000000000000084 _ZN6cEM4082onEv
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cc1CsJsU.s:125    .text:000000000000009c $d
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cc1CsJsU.s:129    .text:00000000000000a0 $a
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cc1CsJsU.s:132    .text:00000000000000a0 _ZN6cEM4083offEv
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cc1CsJsU.s:152    .text:00000000000000b8 $d
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cc1CsJsU.s:156    .text:00000000000000bc $a
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cc1CsJsU.s:159    .text:00000000000000bc _ZN6cEM4085parseEPc
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cc1CsJsU.s:348    .text:0000000000000230 _ZN6cEM4089configureEhh
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cc1CsJsU.s:503    .text:0000000000000340 $d
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cc1CsJsU.s:507    .text:0000000000000344 $a
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cc1CsJsU.s:510    .text:0000000000000344 _ZN6cEM4087disableEh
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cc1CsJsU.s:533    .text:0000000000000350 _ZN6cEM4087disableEv
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cc1CsJsU.s:572    .text:0000000000000380 _ZN6cEM4086enableEv
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cc1CsJsU.s:611    .text:00000000000003b0 _ZN6cEM4086enableEhh
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cc1CsJsU.s:633    .text.startup:0000000000000000 $a
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cc1CsJsU.s:635    .text.startup:0000000000000000 _GLOBAL__sub_I_gps
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cc1CsJsU.s:662    .text.startup:0000000000000018 $d
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cc1CsJsU.s:667    .ctors:0000000000000000 $d
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cc1CsJsU.s:680    .bss:0000000000000000 gps
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cc1CsJsU.s:8      .text:0000000000000000 _ZN6cEM408C1Ejj
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cc1CsJsU.s:676    .bss:0000000000000000 $d
+                     .debug_frame:0000000000000010 $d
+
+UNDEFINED SYMBOLS
+init_serial0
+init_serial1
+strlen
+strtol
+strncat
+strcpy
+strtok
+sprintf
+putc_serial1
+putc_serial0

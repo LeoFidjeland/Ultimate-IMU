@@ -1,0 +1,183 @@
+   1              		.file	"usbinit.c"
+   2              		.text
+   3              	.Ltext0:
+   4              		.cfi_sections	.debug_frame
+   5              		.align	2
+   7              	HandleUsbReset:
+   8              	.LFB0:
+   9              		.file 1 "../Library/lpcusb/usbinit.c"
+   1:../Library/lpcusb/usbinit.c **** /*
+   2:../Library/lpcusb/usbinit.c **** 	LPCUSB, an USB device driver for LPC microcontrollers	
+   3:../Library/lpcusb/usbinit.c **** 	Copyright (C) 2006 Bertrik Sikken (bertrik@sikken.nl)
+   4:../Library/lpcusb/usbinit.c **** 
+   5:../Library/lpcusb/usbinit.c **** 	Redistribution and use in source and binary forms, with or without
+   6:../Library/lpcusb/usbinit.c **** 	modification, are permitted provided that the following conditions are met:
+   7:../Library/lpcusb/usbinit.c **** 
+   8:../Library/lpcusb/usbinit.c **** 	1. Redistributions of source code must retain the above copyright
+   9:../Library/lpcusb/usbinit.c **** 	   notice, this list of conditions and the following disclaimer.
+  10:../Library/lpcusb/usbinit.c **** 	2. Redistributions in binary form must reproduce the above copyright
+  11:../Library/lpcusb/usbinit.c **** 	   notice, this list of conditions and the following disclaimer in the
+  12:../Library/lpcusb/usbinit.c **** 	   documentation and/or other materials provided with the distribution.
+  13:../Library/lpcusb/usbinit.c **** 	3. The name of the author may not be used to endorse or promote products
+  14:../Library/lpcusb/usbinit.c **** 	   derived from this software without specific prior written permission.
+  15:../Library/lpcusb/usbinit.c **** 
+  16:../Library/lpcusb/usbinit.c **** 	THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+  17:../Library/lpcusb/usbinit.c **** 	IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+  18:../Library/lpcusb/usbinit.c **** 	OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+  19:../Library/lpcusb/usbinit.c **** 	IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, 
+  20:../Library/lpcusb/usbinit.c **** 	INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+  21:../Library/lpcusb/usbinit.c **** 	NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+  22:../Library/lpcusb/usbinit.c **** 	DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+  23:../Library/lpcusb/usbinit.c **** 	THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+  24:../Library/lpcusb/usbinit.c **** 	(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+  25:../Library/lpcusb/usbinit.c **** 	THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  26:../Library/lpcusb/usbinit.c **** */
+  27:../Library/lpcusb/usbinit.c **** 
+  28:../Library/lpcusb/usbinit.c **** 
+  29:../Library/lpcusb/usbinit.c **** /** @file
+  30:../Library/lpcusb/usbinit.c **** 	USB stack initialisation
+  31:../Library/lpcusb/usbinit.c ****  */
+  32:../Library/lpcusb/usbinit.c **** 
+  33:../Library/lpcusb/usbinit.c **** #include "type.h"
+  34:../Library/lpcusb/usbinit.c **** #include "usbdebug.h"
+  35:../Library/lpcusb/usbinit.c **** #include "usbapi.h"
+  36:../Library/lpcusb/usbinit.c **** 
+  37:../Library/lpcusb/usbinit.c **** 
+  38:../Library/lpcusb/usbinit.c **** /** data storage area for standard requests */
+  39:../Library/lpcusb/usbinit.c **** static U8	abStdReqData[8];
+  40:../Library/lpcusb/usbinit.c **** 
+  41:../Library/lpcusb/usbinit.c **** 
+  42:../Library/lpcusb/usbinit.c **** /**
+  43:../Library/lpcusb/usbinit.c **** 	USB reset handler
+  44:../Library/lpcusb/usbinit.c **** 	
+  45:../Library/lpcusb/usbinit.c **** 	@param [in] bDevStatus	Device status
+  46:../Library/lpcusb/usbinit.c ****  */
+  47:../Library/lpcusb/usbinit.c **** static void HandleUsbReset(U8 bDevStatus)
+  48:../Library/lpcusb/usbinit.c **** {
+  10              		.loc 1 48 0
+  11              		.cfi_startproc
+  12              		@ Function supports interworking.
+  13              		@ args = 0, pretend = 0, frame = 0
+  14              		@ frame_needed = 0, uses_anonymous_args = 0
+  15              		@ link register save eliminated.
+  16              	.LVL0:
+  49:../Library/lpcusb/usbinit.c **** 	if (bDevStatus & DEV_STATUS_RESET) {
+  50:../Library/lpcusb/usbinit.c **** 		DBG("\n!");
+  51:../Library/lpcusb/usbinit.c **** 	}
+  52:../Library/lpcusb/usbinit.c **** }
+  17              		.loc 1 52 0
+  18 0000 1EFF2FE1 		bx	lr
+  19              		.cfi_endproc
+  20              	.LFE0:
+  22              		.align	2
+  23              		.global	USBInit
+  25              	USBInit:
+  26              	.LFB1:
+  53:../Library/lpcusb/usbinit.c **** 
+  54:../Library/lpcusb/usbinit.c **** 
+  55:../Library/lpcusb/usbinit.c **** /**
+  56:../Library/lpcusb/usbinit.c **** 	Initialises the USB hardware and sets up the USB stack by
+  57:../Library/lpcusb/usbinit.c **** 	installing default callbacks.
+  58:../Library/lpcusb/usbinit.c **** 	
+  59:../Library/lpcusb/usbinit.c **** 	@return TRUE if initialisation was successful
+  60:../Library/lpcusb/usbinit.c ****  */
+  61:../Library/lpcusb/usbinit.c **** BOOL USBInit(void)
+  62:../Library/lpcusb/usbinit.c **** {
+  27              		.loc 1 62 0
+  28              		.cfi_startproc
+  29              		@ Function supports interworking.
+  30              		@ args = 0, pretend = 0, frame = 0
+  31              		@ frame_needed = 0, uses_anonymous_args = 0
+  32 0004 10402DE9 		stmfd	sp!, {r4, lr}
+  33              	.LCFI0:
+  34              		.cfi_def_cfa_offset 8
+  35              		.cfi_offset 14, -4
+  36              		.cfi_offset 4, -8
+  63:../Library/lpcusb/usbinit.c **** 	// init hardware
+  64:../Library/lpcusb/usbinit.c **** 	USBHwInit();
+  65:../Library/lpcusb/usbinit.c **** 	
+  66:../Library/lpcusb/usbinit.c **** 	// register bus reset handler
+  67:../Library/lpcusb/usbinit.c **** 	USBHwRegisterDevIntHandler(HandleUsbReset);
+  68:../Library/lpcusb/usbinit.c **** 	
+  69:../Library/lpcusb/usbinit.c **** 	// register control transfer handler on EP0
+  70:../Library/lpcusb/usbinit.c **** 	USBHwRegisterEPIntHandler(0x00, USBHandleControlTransfer);
+  37              		.loc 1 70 0
+  38 0008 54409FE5 		ldr	r4, .L3
+  64:../Library/lpcusb/usbinit.c **** 	USBHwInit();
+  39              		.loc 1 64 0
+  40 000c FEFFFFEB 		bl	USBHwInit
+  67:../Library/lpcusb/usbinit.c **** 	USBHwRegisterDevIntHandler(HandleUsbReset);
+  41              		.loc 1 67 0
+  42 0010 50009FE5 		ldr	r0, .L3+4
+  43 0014 FEFFFFEB 		bl	USBHwRegisterDevIntHandler
+  44              		.loc 1 70 0
+  45 0018 0410A0E1 		mov	r1, r4
+  46 001c 0000A0E3 		mov	r0, #0
+  47 0020 FEFFFFEB 		bl	USBHwRegisterEPIntHandler
+  71:../Library/lpcusb/usbinit.c **** 	USBHwRegisterEPIntHandler(0x80, USBHandleControlTransfer);
+  48              		.loc 1 71 0
+  49 0024 0410A0E1 		mov	r1, r4
+  50 0028 8000A0E3 		mov	r0, #128
+  51 002c FEFFFFEB 		bl	USBHwRegisterEPIntHandler
+  72:../Library/lpcusb/usbinit.c **** 	
+  73:../Library/lpcusb/usbinit.c **** 	// setup control endpoints
+  74:../Library/lpcusb/usbinit.c **** 	USBHwEPConfig(0x00, MAX_PACKET_SIZE0);
+  52              		.loc 1 74 0
+  53 0030 0000A0E3 		mov	r0, #0
+  54 0034 4010A0E3 		mov	r1, #64
+  55 0038 FEFFFFEB 		bl	USBHwEPConfig
+  75:../Library/lpcusb/usbinit.c **** 	USBHwEPConfig(0x80, MAX_PACKET_SIZE0);
+  56              		.loc 1 75 0
+  57 003c 8000A0E3 		mov	r0, #128
+  58 0040 4010A0E3 		mov	r1, #64
+  59 0044 FEFFFFEB 		bl	USBHwEPConfig
+  76:../Library/lpcusb/usbinit.c **** 	
+  77:../Library/lpcusb/usbinit.c **** 	// register standard request handler
+  78:../Library/lpcusb/usbinit.c **** 	USBRegisterRequestHandler(REQTYPE_TYPE_STANDARD, USBHandleStandardRequest, abStdReqData);
+  60              		.loc 1 78 0
+  61 0048 0000A0E3 		mov	r0, #0
+  62 004c 18109FE5 		ldr	r1, .L3+8
+  63 0050 18209FE5 		ldr	r2, .L3+12
+  64 0054 FEFFFFEB 		bl	USBRegisterRequestHandler
+  79:../Library/lpcusb/usbinit.c **** 
+  80:../Library/lpcusb/usbinit.c **** 	return TRUE;
+  81:../Library/lpcusb/usbinit.c **** }
+  65              		.loc 1 81 0
+  66 0058 0100A0E3 		mov	r0, #1
+  67 005c 1040BDE8 		ldmfd	sp!, {r4, lr}
+  68 0060 1EFF2FE1 		bx	lr
+  69              	.L4:
+  70              		.align	2
+  71              	.L3:
+  72 0064 00000000 		.word	USBHandleControlTransfer
+  73 0068 00000000 		.word	HandleUsbReset
+  74 006c 00000000 		.word	USBHandleStandardRequest
+  75 0070 00000000 		.word	.LANCHOR0
+  76              		.cfi_endproc
+  77              	.LFE1:
+  79              		.bss
+  80              		.set	.LANCHOR0,. + 0
+  83              	abStdReqData:
+  84 0000 00000000 		.space	8
+  84      00000000 
+  85              		.text
+  86              	.Letext0:
+  87              		.file 2 "../Library/lpcusb/type.h"
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 usbinit.c
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccOZEmD1.s:5      .text:0000000000000000 $a
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccOZEmD1.s:7      .text:0000000000000000 HandleUsbReset
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccOZEmD1.s:25     .text:0000000000000004 USBInit
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccOZEmD1.s:72     .text:0000000000000064 $d
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccOZEmD1.s:83     .bss:0000000000000000 abStdReqData
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccOZEmD1.s:84     .bss:0000000000000000 $d
+                     .debug_frame:0000000000000010 $d
+
+UNDEFINED SYMBOLS
+USBHwInit
+USBHwRegisterDevIntHandler
+USBHwRegisterEPIntHandler
+USBHwEPConfig
+USBRegisterRequestHandler
+USBHandleControlTransfer
+USBHandleStandardRequest

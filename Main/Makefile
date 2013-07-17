@@ -289,8 +289,8 @@ LPC21ISP_CONTROL = -control
 
 # Define programs and commands.
 SHELL = sh
-CC = arm-elf-gcc
-CPP = arm-elf-g++
+CC = arm-elf-gcc-4.6
+CPP = arm-elf-g++-4.6
 OBJCOPY = arm-elf-objcopy
 OBJDUMP = arm-elf-objdump
 SIZE = arm-elf-size

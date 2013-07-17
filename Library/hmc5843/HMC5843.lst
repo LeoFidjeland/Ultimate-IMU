@@ -1,0 +1,829 @@
+   1              		.file	"HMC5843.cpp"
+   2              		.text
+   3              	.Ltext0:
+   4              		.cfi_sections	.debug_frame
+   5              		.align	2
+   6              		.global	_ZN8cHMC5843C2Eic
+   8              	_ZN8cHMC5843C2Eic:
+   9              	.LFB1:
+  10              		.file 1 "../Library/hmc5843/HMC5843.cpp"
+   1:../Library/hmc5843/HMC5843.cpp **** /*
+   2:../Library/hmc5843/HMC5843.cpp **** 	HMC5843 Library
+   3:../Library/hmc5843/HMC5843.cpp **** 	
+   4:../Library/hmc5843/HMC5843.cpp **** 	This libary contains functions to interact with the HMC5843
+   5:../Library/hmc5843/HMC5843.cpp **** 	I2C.h must be included as the I2C class is inherited
+   6:../Library/hmc5843/HMC5843.cpp **** 
+   7:../Library/hmc5843/HMC5843.cpp **** 	created 8/30/10
+   8:../Library/hmc5843/HMC5843.cpp **** 	by Ryan Owens
+   9:../Library/hmc5843/HMC5843.cpp **** 	http://www.sparkfun.com
+  10:../Library/hmc5843/HMC5843.cpp **** 	
+  11:../Library/hmc5843/HMC5843.cpp **** 	Example Code:
+  12:../Library/hmc5843/HMC5843.cpp **** 	char values[6];
+  13:../Library/hmc5843/HMC5843.cpp **** 	char status=0;
+  14:../Library/hmc5843/HMC5843.cpp **** 	
+  15:../Library/hmc5843/HMC5843.cpp **** 	while(!compass.begin()){
+  16:../Library/hmc5843/HMC5843.cpp **** 		rprintf("Begin Failed\n\r");
+  17:../Library/hmc5843/HMC5843.cpp **** 		delay_ms(100);
+  18:../Library/hmc5843/HMC5843.cpp **** 	}
+  19:../Library/hmc5843/HMC5843.cpp **** 	values[0]=0x02;
+  20:../Library/hmc5843/HMC5843.cpp **** 	values[1]=0x00;
+  21:../Library/hmc5843/HMC5843.cpp **** 	while(!compass.write(values, 2));
+  22:../Library/hmc5843/HMC5843.cpp **** 	values[0]=0x02;
+  23:../Library/hmc5843/HMC5843.cpp **** 	while(!compass.read(values, 1));
+  24:../Library/hmc5843/HMC5843.cpp **** 	rprintf("Mode: %02x\n\r", values[0]);
+  25:../Library/hmc5843/HMC5843.cpp **** 	values[0]=ID_REGA;
+  26:../Library/hmc5843/HMC5843.cpp **** 	while(!compass.read(values, 1));
+  27:../Library/hmc5843/HMC5843.cpp **** 	rprintf("ID: %02x\n\r", values[0]);	
+  28:../Library/hmc5843/HMC5843.cpp **** 	delay_ms(1000);
+  29:../Library/hmc5843/HMC5843.cpp **** 	status=0;
+  30:../Library/hmc5843/HMC5843.cpp **** 	while(1){
+  31:../Library/hmc5843/HMC5843.cpp **** 		while(!(status & (1<<0))){
+  32:../Library/hmc5843/HMC5843.cpp **** 			values[0]=STATUS_REG;
+  33:../Library/hmc5843/HMC5843.cpp **** 			while(!compass.read(values,  1));	//Read the Status Register
+  34:../Library/hmc5843/HMC5843.cpp **** 			status=values[0];
+  35:../Library/hmc5843/HMC5843.cpp **** 			//rprintf("Status: %02x\n\r", status);
+  36:../Library/hmc5843/HMC5843.cpp **** 		}
+  37:../Library/hmc5843/HMC5843.cpp **** 		status=0;
+  38:../Library/hmc5843/HMC5843.cpp **** 		values[0]=DATA_OUT_X_H;
+  39:../Library/hmc5843/HMC5843.cpp **** 		while(!compass.read(values, 6));
+  40:../Library/hmc5843/HMC5843.cpp **** 		for(int i=0; i<3; i++)
+  41:../Library/hmc5843/HMC5843.cpp **** 			rprintf("%02x%02x\t", values[i*2], values[i*2+1]);
+  42:../Library/hmc5843/HMC5843.cpp **** 		rprintf("\n\r");
+  43:../Library/hmc5843/HMC5843.cpp **** 	}		
+  44:../Library/hmc5843/HMC5843.cpp ****  
+  45:../Library/hmc5843/HMC5843.cpp **** */
+  46:../Library/hmc5843/HMC5843.cpp **** #include "HMC5843.h"
+  47:../Library/hmc5843/HMC5843.cpp **** 
+  48:../Library/hmc5843/HMC5843.cpp **** #include <stdlib.h>
+  49:../Library/hmc5843/HMC5843.cpp **** #include <stdio.h>
+  50:../Library/hmc5843/HMC5843.cpp **** #include <math.h>
+  51:../Library/hmc5843/HMC5843.cpp **** #include "LPC21xx_SFE.h"
+  52:../Library/hmc5843/HMC5843.cpp **** #include "main.h"
+  53:../Library/hmc5843/HMC5843.cpp **** 
+  54:../Library/hmc5843/HMC5843.cpp **** #define GLOBALOBJECT
+  55:../Library/hmc5843/HMC5843.cpp **** 
+  56:../Library/hmc5843/HMC5843.cpp **** cHMC5843 compass(0, HMC_ADDR);
+  57:../Library/hmc5843/HMC5843.cpp **** 
+  58:../Library/hmc5843/HMC5843.cpp **** cHMC5843::cHMC5843(int port, char i2c_address)
+  11              		.loc 1 58 0
+  12              		.cfi_startproc
+  13              		@ Function supports interworking.
+  14              		@ args = 0, pretend = 0, frame = 0
+  15              		@ frame_needed = 0, uses_anonymous_args = 0
+  16              	.LVL0:
+  17 0000 70402DE9 		stmfd	sp!, {r4, r5, r6, lr}
+  18              	.LCFI0:
+  19              		.cfi_def_cfa_offset 16
+  20              		.cfi_offset 14, -4
+  21              		.cfi_offset 6, -8
+  22              		.cfi_offset 5, -12
+  23              		.cfi_offset 4, -16
+  24              		.loc 1 58 0
+  25 0004 0040A0E1 		mov	r4, r0
+  26 0008 0150A0E1 		mov	r5, r1
+  27 000c FF6002E2 		and	r6, r2, #255
+  28              	.LBB9:
+  29 0010 FEFFFFEB 		bl	_ZN3I2CC2Ev
+  30              	.LVL1:
+  59:../Library/hmc5843/HMC5843.cpp **** {
+  60:../Library/hmc5843/HMC5843.cpp **** 	_i2c_port = port;
+  31              		.loc 1 60 0
+  32 0014 005084E5 		str	r5, [r4, #0]
+  61:../Library/hmc5843/HMC5843.cpp **** 	_i2c_address = i2c_address;
+  33              		.loc 1 61 0
+  34 0018 2260C4E5 		strb	r6, [r4, #34]
+  35              	.LBE9:
+  62:../Library/hmc5843/HMC5843.cpp **** 	
+  63:../Library/hmc5843/HMC5843.cpp **** }
+  36              		.loc 1 63 0
+  37 001c 7040BDE8 		ldmfd	sp!, {r4, r5, r6, lr}
+  38 0020 1EFF2FE1 		bx	lr
+  39              		.cfi_endproc
+  40              	.LFE1:
+  42              		.align	2
+  43              		.global	_ZN8cHMC58435writeEPcc
+  45              	_ZN8cHMC58435writeEPcc:
+  46              	.LFB5:
+  64:../Library/hmc5843/HMC5843.cpp **** 
+  65:../Library/hmc5843/HMC5843.cpp **** void cHMC5843::begin(char range)
+  66:../Library/hmc5843/HMC5843.cpp **** {
+  67:../Library/hmc5843/HMC5843.cpp **** 	//char values[2];
+  68:../Library/hmc5843/HMC5843.cpp **** 	configure();
+  69:../Library/hmc5843/HMC5843.cpp **** 	
+  70:../Library/hmc5843/HMC5843.cpp **** 	//Configure the compass for 50 Hz Update Rage
+  71:../Library/hmc5843/HMC5843.cpp **** 	values[0]=CONFIG_REGA;
+  72:../Library/hmc5843/HMC5843.cpp **** 	values[1]=CONFIG_REGA_DO2|CONFIG_REGA_DO1;
+  73:../Library/hmc5843/HMC5843.cpp **** 	write(values,2);
+  74:../Library/hmc5843/HMC5843.cpp **** 	
+  75:../Library/hmc5843/HMC5843.cpp **** 	//Set the Range for the compass
+  76:../Library/hmc5843/HMC5843.cpp **** 	values[0]=CONFIG_REGB;
+  77:../Library/hmc5843/HMC5843.cpp **** 	values[1]=(range<<5);
+  78:../Library/hmc5843/HMC5843.cpp **** 	write(values, 2);
+  79:../Library/hmc5843/HMC5843.cpp **** 	
+  80:../Library/hmc5843/HMC5843.cpp **** 	//Configure compass for continuous conversion
+  81:../Library/hmc5843/HMC5843.cpp **** 	values[0]=MODE_REG;	
+  82:../Library/hmc5843/HMC5843.cpp **** 	values[1]=0x00;		//Set the HMC to continuous conversion mode
+  83:../Library/hmc5843/HMC5843.cpp **** 	write(values, 2);	//Write the new data to the HMC register.
+  84:../Library/hmc5843/HMC5843.cpp **** 	
+  85:../Library/hmc5843/HMC5843.cpp **** 	//Assign the gain based on the range setting
+  86:../Library/hmc5843/HMC5843.cpp **** 	switch(range){
+  87:../Library/hmc5843/HMC5843.cpp **** 		case 0:	gain=1620;
+  88:../Library/hmc5843/HMC5843.cpp **** 			break;
+  89:../Library/hmc5843/HMC5843.cpp **** 		case 1:	gain=1300;
+  90:../Library/hmc5843/HMC5843.cpp **** 			break;
+  91:../Library/hmc5843/HMC5843.cpp **** 		case 2: gain = 970;
+  92:../Library/hmc5843/HMC5843.cpp **** 			break;
+  93:../Library/hmc5843/HMC5843.cpp **** 		case 3: gain = 780;
+  94:../Library/hmc5843/HMC5843.cpp **** 			break;
+  95:../Library/hmc5843/HMC5843.cpp **** 		case 4: gain = 530;
+  96:../Library/hmc5843/HMC5843.cpp **** 			break;
+  97:../Library/hmc5843/HMC5843.cpp **** 		case 5: gain = 460;
+  98:../Library/hmc5843/HMC5843.cpp **** 			break;
+  99:../Library/hmc5843/HMC5843.cpp **** 		case 6: gain = 390;
+ 100:../Library/hmc5843/HMC5843.cpp **** 			break;
+ 101:../Library/hmc5843/HMC5843.cpp **** 		case 7: gain = 280;
+ 102:../Library/hmc5843/HMC5843.cpp **** 			break;
+ 103:../Library/hmc5843/HMC5843.cpp **** 		default: gain = 1300;
+ 104:../Library/hmc5843/HMC5843.cpp **** 			break;
+ 105:../Library/hmc5843/HMC5843.cpp **** 	}
+ 106:../Library/hmc5843/HMC5843.cpp **** }
+ 107:../Library/hmc5843/HMC5843.cpp **** 
+ 108:../Library/hmc5843/HMC5843.cpp **** 
+ 109:../Library/hmc5843/HMC5843.cpp **** char cHMC5843::read(char * value, char length){
+ 110:../Library/hmc5843/HMC5843.cpp **** 	
+ 111:../Library/hmc5843/HMC5843.cpp **** 	write(value, 1);	//Set up the i2c address to read from
+ 112:../Library/hmc5843/HMC5843.cpp **** 	return send(_i2c_address, value, READ, length);	
+ 113:../Library/hmc5843/HMC5843.cpp **** }
+ 114:../Library/hmc5843/HMC5843.cpp **** 
+ 115:../Library/hmc5843/HMC5843.cpp **** char cHMC5843::write(char * value, char length){
+  47              		.loc 1 115 0
+  48              		.cfi_startproc
+  49              		@ Function supports interworking.
+  50              		@ args = 0, pretend = 0, frame = 0
+  51              		@ frame_needed = 0, uses_anonymous_args = 0
+  52              	.LVL2:
+  53 0024 01402DE9 		stmfd	sp!, {r0, lr}
+  54              	.LCFI1:
+  55              		.cfi_def_cfa_offset 8
+  56              		.cfi_offset 14, -4
+  57              		.cfi_offset 0, -8
+  58              		.loc 1 115 0
+  59 0028 0130A0E1 		mov	r3, r1
+  60 002c FF2002E2 		and	r2, r2, #255
+  61              	.LVL3:
+ 116:../Library/hmc5843/HMC5843.cpp **** 
+ 117:../Library/hmc5843/HMC5843.cpp **** 	return send(_i2c_address, value, WRITE, length);
+  62              		.loc 1 117 0
+  63 0030 2210D0E5 		ldrb	r1, [r0, #34]	@ zero_extendqisi2
+  64              	.LVL4:
+  65 0034 00208DE5 		str	r2, [sp, #0]
+  66 0038 0320A0E1 		mov	r2, r3
+  67 003c 0030A0E3 		mov	r3, #0
+  68              	.LVL5:
+  69 0040 FEFFFFEB 		bl	_ZN3I2C4sendEcPccc
+  70              	.LVL6:
+ 118:../Library/hmc5843/HMC5843.cpp **** }
+  71              		.loc 1 118 0
+  72 0044 0840BDE8 		ldmfd	sp!, {r3, lr}
+  73 0048 1EFF2FE1 		bx	lr
+  74              		.cfi_endproc
+  75              	.LFE5:
+  77              		.align	2
+  78              		.global	_ZN8cHMC58434readEPcc
+  80              	_ZN8cHMC58434readEPcc:
+  81              	.LFB4:
+ 109:../Library/hmc5843/HMC5843.cpp **** char cHMC5843::read(char * value, char length){
+  82              		.loc 1 109 0
+  83              		.cfi_startproc
+  84              		@ Function supports interworking.
+  85              		@ args = 0, pretend = 0, frame = 0
+  86              		@ frame_needed = 0, uses_anonymous_args = 0
+  87              	.LVL7:
+  88 004c 71402DE9 		stmfd	sp!, {r0, r4, r5, r6, lr}
+  89              	.LCFI2:
+  90              		.cfi_def_cfa_offset 20
+  91              		.cfi_offset 14, -4
+  92              		.cfi_offset 6, -8
+  93              		.cfi_offset 5, -12
+  94              		.cfi_offset 4, -16
+  95              		.cfi_offset 0, -20
+ 109:../Library/hmc5843/HMC5843.cpp **** char cHMC5843::read(char * value, char length){
+  96              		.loc 1 109 0
+  97 0050 0040A0E1 		mov	r4, r0
+  98 0054 0150A0E1 		mov	r5, r1
+  99 0058 FF6002E2 		and	r6, r2, #255
+ 111:../Library/hmc5843/HMC5843.cpp **** 	write(value, 1);	//Set up the i2c address to read from
+ 100              		.loc 1 111 0
+ 101 005c 0120A0E3 		mov	r2, #1
+ 102              	.LVL8:
+ 103 0060 FEFFFFEB 		bl	_ZN8cHMC58435writeEPcc
+ 104              	.LVL9:
+ 112:../Library/hmc5843/HMC5843.cpp **** 	return send(_i2c_address, value, READ, length);	
+ 105              		.loc 1 112 0
+ 106 0064 2210D4E5 		ldrb	r1, [r4, #34]	@ zero_extendqisi2
+ 107 0068 0400A0E1 		mov	r0, r4
+ 108 006c 0520A0E1 		mov	r2, r5
+ 109 0070 0130A0E3 		mov	r3, #1
+ 110 0074 00608DE5 		str	r6, [sp, #0]
+ 111 0078 FEFFFFEB 		bl	_ZN3I2C4sendEcPccc
+ 113:../Library/hmc5843/HMC5843.cpp **** }
+ 112              		.loc 1 113 0
+ 113 007c 7840BDE8 		ldmfd	sp!, {r3, r4, r5, r6, lr}
+ 114 0080 1EFF2FE1 		bx	lr
+ 115              		.cfi_endproc
+ 116              	.LFE4:
+ 118              		.align	2
+ 119              		.global	_ZN8cHMC58435beginEc
+ 121              	_ZN8cHMC58435beginEc:
+ 122              	.LFB3:
+  66:../Library/hmc5843/HMC5843.cpp **** {
+ 123              		.loc 1 66 0
+ 124              		.cfi_startproc
+ 125              		@ Function supports interworking.
+ 126              		@ args = 0, pretend = 0, frame = 0
+ 127              		@ frame_needed = 0, uses_anonymous_args = 0
+ 128              	.LVL10:
+ 129 0084 F0402DE9 		stmfd	sp!, {r4, r5, r6, r7, lr}
+ 130              	.LCFI3:
+ 131              		.cfi_def_cfa_offset 20
+ 132              		.cfi_offset 14, -4
+ 133              		.cfi_offset 7, -8
+ 134              		.cfi_offset 6, -12
+ 135              		.cfi_offset 5, -16
+ 136              		.cfi_offset 4, -20
+  66:../Library/hmc5843/HMC5843.cpp **** {
+ 137              		.loc 1 66 0
+ 138 0088 0040A0E1 		mov	r4, r0
+ 139 008c FF5001E2 		and	r5, r1, #255
+  73:../Library/hmc5843/HMC5843.cpp **** 	write(values,2);
+ 140              		.loc 1 73 0
+ 141 0090 1C6084E2 		add	r6, r4, #28
+  68:../Library/hmc5843/HMC5843.cpp **** 	configure();
+ 142              		.loc 1 68 0
+ 143 0094 FEFFFFEB 		bl	_ZN3I2C9configureEv
+ 144              	.LVL11:
+  71:../Library/hmc5843/HMC5843.cpp **** 	values[0]=CONFIG_REGA;
+ 145              		.loc 1 71 0
+ 146 0098 0070A0E3 		mov	r7, #0
+  72:../Library/hmc5843/HMC5843.cpp **** 	values[1]=CONFIG_REGA_DO2|CONFIG_REGA_DO1;
+ 147              		.loc 1 72 0
+ 148 009c 1830A0E3 		mov	r3, #24
+ 149 00a0 1D30C4E5 		strb	r3, [r4, #29]
+  73:../Library/hmc5843/HMC5843.cpp **** 	write(values,2);
+ 150              		.loc 1 73 0
+ 151 00a4 0610A0E1 		mov	r1, r6
+ 152 00a8 0220A0E3 		mov	r2, #2
+  71:../Library/hmc5843/HMC5843.cpp **** 	values[0]=CONFIG_REGA;
+ 153              		.loc 1 71 0
+ 154 00ac 1C70C4E5 		strb	r7, [r4, #28]
+  73:../Library/hmc5843/HMC5843.cpp **** 	write(values,2);
+ 155              		.loc 1 73 0
+ 156 00b0 0400A0E1 		mov	r0, r4
+ 157 00b4 FEFFFFEB 		bl	_ZN8cHMC58435writeEPcc
+  76:../Library/hmc5843/HMC5843.cpp **** 	values[0]=CONFIG_REGB;
+ 158              		.loc 1 76 0
+ 159 00b8 0130A0E3 		mov	r3, #1
+ 160 00bc 1C30C4E5 		strb	r3, [r4, #28]
+  77:../Library/hmc5843/HMC5843.cpp **** 	values[1]=(range<<5);
+ 161              		.loc 1 77 0
+ 162 00c0 8532A0E1 		mov	r3, r5, asl #5
+  78:../Library/hmc5843/HMC5843.cpp **** 	write(values, 2);
+ 163              		.loc 1 78 0
+ 164 00c4 0610A0E1 		mov	r1, r6
+ 165 00c8 0220A0E3 		mov	r2, #2
+  77:../Library/hmc5843/HMC5843.cpp **** 	values[1]=(range<<5);
+ 166              		.loc 1 77 0
+ 167 00cc 1D30C4E5 		strb	r3, [r4, #29]
+  78:../Library/hmc5843/HMC5843.cpp **** 	write(values, 2);
+ 168              		.loc 1 78 0
+ 169 00d0 0400A0E1 		mov	r0, r4
+ 170 00d4 FEFFFFEB 		bl	_ZN8cHMC58435writeEPcc
+  81:../Library/hmc5843/HMC5843.cpp **** 	values[0]=MODE_REG;	
+ 171              		.loc 1 81 0
+ 172 00d8 0220A0E3 		mov	r2, #2
+ 173 00dc 1C20C4E5 		strb	r2, [r4, #28]
+  82:../Library/hmc5843/HMC5843.cpp **** 	values[1]=0x00;		//Set the HMC to continuous conversion mode
+ 174              		.loc 1 82 0
+ 175 00e0 1D70C4E5 		strb	r7, [r4, #29]
+  83:../Library/hmc5843/HMC5843.cpp **** 	write(values, 2);	//Write the new data to the HMC register.
+ 176              		.loc 1 83 0
+ 177 00e4 0400A0E1 		mov	r0, r4
+ 178 00e8 0610A0E1 		mov	r1, r6
+ 179 00ec FEFFFFEB 		bl	_ZN8cHMC58435writeEPcc
+  86:../Library/hmc5843/HMC5843.cpp **** 	switch(range){
+ 180              		.loc 1 86 0
+ 181 00f0 070055E3 		cmp	r5, #7
+ 182 00f4 05F19F97 		ldrls	pc, [pc, r5, asl #2]
+ 183 00f8 150000EA 		b	.L5
+ 184              	.L14:
+ 185 00fc 1C010000 		.word	.L6
+ 186 0100 54010000 		.word	.L5
+ 187 0104 24010000 		.word	.L8
+ 188 0108 2C010000 		.word	.L9
+ 189 010c 34010000 		.word	.L10
+ 190 0110 3C010000 		.word	.L11
+ 191 0114 44010000 		.word	.L12
+ 192 0118 4C010000 		.word	.L13
+ 193              	.L6:
+  87:../Library/hmc5843/HMC5843.cpp **** 		case 0:	gain=1620;
+ 194              		.loc 1 87 0
+ 195 011c 40309FE5 		ldr	r3, .L17
+ 196 0120 0C0000EA 		b	.L16
+ 197              	.L8:
+  91:../Library/hmc5843/HMC5843.cpp **** 		case 2: gain = 970;
+ 198              		.loc 1 91 0
+ 199 0124 3C309FE5 		ldr	r3, .L17+4
+ 200 0128 0A0000EA 		b	.L16
+ 201              	.L9:
+  93:../Library/hmc5843/HMC5843.cpp **** 		case 3: gain = 780;
+ 202              		.loc 1 93 0
+ 203 012c C33FA0E3 		mov	r3, #780
+ 204 0130 080000EA 		b	.L16
+ 205              	.L10:
+  95:../Library/hmc5843/HMC5843.cpp **** 		case 4: gain = 530;
+ 206              		.loc 1 95 0
+ 207 0134 30309FE5 		ldr	r3, .L17+8
+ 208 0138 060000EA 		b	.L16
+ 209              	.L11:
+  97:../Library/hmc5843/HMC5843.cpp **** 		case 5: gain = 460;
+ 210              		.loc 1 97 0
+ 211 013c 733FA0E3 		mov	r3, #460
+ 212 0140 040000EA 		b	.L16
+ 213              	.L12:
+  99:../Library/hmc5843/HMC5843.cpp **** 		case 6: gain = 390;
+ 214              		.loc 1 99 0
+ 215 0144 24309FE5 		ldr	r3, .L17+12
+ 216 0148 020000EA 		b	.L16
+ 217              	.L13:
+ 101:../Library/hmc5843/HMC5843.cpp **** 		case 7: gain = 280;
+ 218              		.loc 1 101 0
+ 219 014c 463FA0E3 		mov	r3, #280
+ 220 0150 000000EA 		b	.L16
+ 221              	.L5:
+ 103:../Library/hmc5843/HMC5843.cpp **** 		default: gain = 1300;
+ 222              		.loc 1 103 0
+ 223 0154 18309FE5 		ldr	r3, .L17+16
+ 224              	.L16:
+ 225 0158 183084E5 		str	r3, [r4, #24]
+ 106:../Library/hmc5843/HMC5843.cpp **** }
+ 226              		.loc 1 106 0
+ 227 015c F040BDE8 		ldmfd	sp!, {r4, r5, r6, r7, lr}
+ 228 0160 1EFF2FE1 		bx	lr
+ 229              	.L18:
+ 230              		.align	2
+ 231              	.L17:
+ 232 0164 54060000 		.word	1620
+ 233 0168 CA030000 		.word	970
+ 234 016c 12020000 		.word	530
+ 235 0170 86010000 		.word	390
+ 236 0174 14050000 		.word	1300
+ 237              		.cfi_endproc
+ 238              	.LFE3:
+ 240              		.global	__floatsisf
+ 241              		.align	2
+ 242              		.global	_ZN8cHMC58436updateEv
+ 244              	_ZN8cHMC58436updateEv:
+ 245              	.LFB6:
+ 119:../Library/hmc5843/HMC5843.cpp **** 
+ 120:../Library/hmc5843/HMC5843.cpp **** char cHMC5843::update(void)
+ 121:../Library/hmc5843/HMC5843.cpp **** {
+ 246              		.loc 1 121 0
+ 247              		.cfi_startproc
+ 248              		@ Function supports interworking.
+ 249              		@ args = 0, pretend = 0, frame = 0
+ 250              		@ frame_needed = 0, uses_anonymous_args = 0
+ 251              	.LVL12:
+ 122:../Library/hmc5843/HMC5843.cpp **** 	values[0]=DATA_OUT_X_H;
+ 252              		.loc 1 122 0
+ 253 0178 0010A0E1 		mov	r1, r0
+ 254 017c 0330A0E3 		mov	r3, #3
+ 121:../Library/hmc5843/HMC5843.cpp **** {
+ 255              		.loc 1 121 0
+ 256 0180 10402DE9 		stmfd	sp!, {r4, lr}
+ 257              	.LCFI4:
+ 258              		.cfi_def_cfa_offset 8
+ 259              		.cfi_offset 14, -4
+ 260              		.cfi_offset 4, -8
+ 123:../Library/hmc5843/HMC5843.cpp **** 	if(read(values, 6))
+ 261              		.loc 1 123 0
+ 262 0184 0620A0E3 		mov	r2, #6
+ 122:../Library/hmc5843/HMC5843.cpp **** 	values[0]=DATA_OUT_X_H;
+ 263              		.loc 1 122 0
+ 264 0188 1C30E1E5 		strb	r3, [r1, #28]!
+ 121:../Library/hmc5843/HMC5843.cpp **** {
+ 265              		.loc 1 121 0
+ 266 018c 0040A0E1 		mov	r4, r0
+ 267              		.loc 1 123 0
+ 268 0190 FEFFFFEB 		bl	_ZN8cHMC58434readEPcc
+ 269              	.LVL13:
+ 270 0194 000050E3 		cmp	r0, #0
+ 271 0198 1500000A 		beq	.L20
+ 124:../Library/hmc5843/HMC5843.cpp **** 	{
+ 125:../Library/hmc5843/HMC5843.cpp **** 		xc = (int16_t)((values[0]<<8)|values[1]);
+ 272              		.loc 1 125 0
+ 273 019c 1D30D4E5 		ldrb	r3, [r4, #29]	@ zero_extendqisi2
+ 274 01a0 1C00D4E5 		ldrb	r0, [r4, #28]	@ zero_extendqisi2
+ 275 01a4 000483E1 		orr	r0, r3, r0, asl #8
+ 276 01a8 0008A0E1 		mov	r0, r0, asl #16
+ 277 01ac 4008A0E1 		mov	r0, r0, asr #16
+ 278 01b0 FEFFFFEB 		bl	__floatsisf
+ 126:../Library/hmc5843/HMC5843.cpp **** 		yc = (int16_t)((values[2]<<8)|values[3]);
+ 279              		.loc 1 126 0
+ 280 01b4 1F30D4E5 		ldrb	r3, [r4, #31]	@ zero_extendqisi2
+ 125:../Library/hmc5843/HMC5843.cpp **** 		xc = (int16_t)((values[0]<<8)|values[1]);
+ 281              		.loc 1 125 0
+ 282 01b8 080084E5 		str	r0, [r4, #8]	@ float
+ 283              		.loc 1 126 0
+ 284 01bc 1E00D4E5 		ldrb	r0, [r4, #30]	@ zero_extendqisi2
+ 285 01c0 000483E1 		orr	r0, r3, r0, asl #8
+ 286 01c4 0008A0E1 		mov	r0, r0, asl #16
+ 287 01c8 4008A0E1 		mov	r0, r0, asr #16
+ 288 01cc FEFFFFEB 		bl	__floatsisf
+ 127:../Library/hmc5843/HMC5843.cpp **** 		zc = (int16_t)((values[4]<<8)|values[5]);
+ 289              		.loc 1 127 0
+ 290 01d0 2130D4E5 		ldrb	r3, [r4, #33]	@ zero_extendqisi2
+ 126:../Library/hmc5843/HMC5843.cpp **** 		yc = (int16_t)((values[2]<<8)|values[3]);
+ 291              		.loc 1 126 0
+ 292 01d4 0C0084E5 		str	r0, [r4, #12]	@ float
+ 293              		.loc 1 127 0
+ 294 01d8 2000D4E5 		ldrb	r0, [r4, #32]	@ zero_extendqisi2
+ 295 01dc 000483E1 		orr	r0, r3, r0, asl #8
+ 296 01e0 0008A0E1 		mov	r0, r0, asl #16
+ 297 01e4 4008A0E1 		mov	r0, r0, asr #16
+ 298 01e8 FEFFFFEB 		bl	__floatsisf
+ 299 01ec 100084E5 		str	r0, [r4, #16]	@ float
+ 128:../Library/hmc5843/HMC5843.cpp **** 	}
+ 129:../Library/hmc5843/HMC5843.cpp **** 	else return 0;
+ 130:../Library/hmc5843/HMC5843.cpp **** 	return 1;
+ 300              		.loc 1 130 0
+ 301 01f0 0100A0E3 		mov	r0, #1
+ 302              	.L20:
+ 131:../Library/hmc5843/HMC5843.cpp **** }
+ 303              		.loc 1 131 0
+ 304 01f4 1040BDE8 		ldmfd	sp!, {r4, lr}
+ 305 01f8 1EFF2FE1 		bx	lr
+ 306              		.cfi_endproc
+ 307              	.LFE6:
+ 309              		.global	__divsf3
+ 310              		.align	2
+ 311              		.global	_ZN8cHMC58434getXEv
+ 313              	_ZN8cHMC58434getXEv:
+ 314              	.LFB7:
+ 132:../Library/hmc5843/HMC5843.cpp **** 
+ 133:../Library/hmc5843/HMC5843.cpp **** float cHMC5843::getX(void)
+ 134:../Library/hmc5843/HMC5843.cpp **** {
+ 315              		.loc 1 134 0
+ 316              		.cfi_startproc
+ 317              		@ Function supports interworking.
+ 318              		@ args = 0, pretend = 0, frame = 0
+ 319              		@ frame_needed = 0, uses_anonymous_args = 0
+ 320              	.LVL14:
+ 321 01fc 10402DE9 		stmfd	sp!, {r4, lr}
+ 322              	.LCFI5:
+ 323              		.cfi_def_cfa_offset 8
+ 324              		.cfi_offset 14, -4
+ 325              		.cfi_offset 4, -8
+ 326              		.loc 1 134 0
+ 327 0200 0040A0E1 		mov	r4, r0
+ 135:../Library/hmc5843/HMC5843.cpp **** 	xc = xc/gain;
+ 328              		.loc 1 135 0
+ 329 0204 180090E5 		ldr	r0, [r0, #24]
+ 330              	.LVL15:
+ 331 0208 FEFFFFEB 		bl	__floatsisf
+ 332 020c 0010A0E1 		mov	r1, r0
+ 333 0210 080094E5 		ldr	r0, [r4, #8]	@ float
+ 334 0214 FEFFFFEB 		bl	__divsf3
+ 335 0218 080084E5 		str	r0, [r4, #8]	@ float
+ 136:../Library/hmc5843/HMC5843.cpp **** 	return xc;
+ 137:../Library/hmc5843/HMC5843.cpp **** }
+ 336              		.loc 1 137 0
+ 337 021c 1040BDE8 		ldmfd	sp!, {r4, lr}
+ 338 0220 1EFF2FE1 		bx	lr
+ 339              		.cfi_endproc
+ 340              	.LFE7:
+ 342              		.align	2
+ 343              		.global	_ZN8cHMC58434getYEv
+ 345              	_ZN8cHMC58434getYEv:
+ 346              	.LFB8:
+ 138:../Library/hmc5843/HMC5843.cpp **** 
+ 139:../Library/hmc5843/HMC5843.cpp **** float cHMC5843::getY(void)
+ 140:../Library/hmc5843/HMC5843.cpp **** {
+ 347              		.loc 1 140 0
+ 348              		.cfi_startproc
+ 349              		@ Function supports interworking.
+ 350              		@ args = 0, pretend = 0, frame = 0
+ 351              		@ frame_needed = 0, uses_anonymous_args = 0
+ 352              	.LVL16:
+ 353 0224 10402DE9 		stmfd	sp!, {r4, lr}
+ 354              	.LCFI6:
+ 355              		.cfi_def_cfa_offset 8
+ 356              		.cfi_offset 14, -4
+ 357              		.cfi_offset 4, -8
+ 358              		.loc 1 140 0
+ 359 0228 0040A0E1 		mov	r4, r0
+ 141:../Library/hmc5843/HMC5843.cpp **** 	yc = yc/gain;
+ 360              		.loc 1 141 0
+ 361 022c 180090E5 		ldr	r0, [r0, #24]
+ 362              	.LVL17:
+ 363 0230 FEFFFFEB 		bl	__floatsisf
+ 364 0234 0010A0E1 		mov	r1, r0
+ 365 0238 0C0094E5 		ldr	r0, [r4, #12]	@ float
+ 366 023c FEFFFFEB 		bl	__divsf3
+ 367 0240 0C0084E5 		str	r0, [r4, #12]	@ float
+ 142:../Library/hmc5843/HMC5843.cpp **** 	return yc;
+ 143:../Library/hmc5843/HMC5843.cpp **** }
+ 368              		.loc 1 143 0
+ 369 0244 1040BDE8 		ldmfd	sp!, {r4, lr}
+ 370 0248 1EFF2FE1 		bx	lr
+ 371              		.cfi_endproc
+ 372              	.LFE8:
+ 374              		.align	2
+ 375              		.global	_ZN8cHMC58434getZEv
+ 377              	_ZN8cHMC58434getZEv:
+ 378              	.LFB9:
+ 144:../Library/hmc5843/HMC5843.cpp **** 
+ 145:../Library/hmc5843/HMC5843.cpp **** float cHMC5843::getZ(void)
+ 146:../Library/hmc5843/HMC5843.cpp **** {
+ 379              		.loc 1 146 0
+ 380              		.cfi_startproc
+ 381              		@ Function supports interworking.
+ 382              		@ args = 0, pretend = 0, frame = 0
+ 383              		@ frame_needed = 0, uses_anonymous_args = 0
+ 384              	.LVL18:
+ 385 024c 10402DE9 		stmfd	sp!, {r4, lr}
+ 386              	.LCFI7:
+ 387              		.cfi_def_cfa_offset 8
+ 388              		.cfi_offset 14, -4
+ 389              		.cfi_offset 4, -8
+ 390              		.loc 1 146 0
+ 391 0250 0040A0E1 		mov	r4, r0
+ 147:../Library/hmc5843/HMC5843.cpp **** 	zc = zc/gain;
+ 392              		.loc 1 147 0
+ 393 0254 180090E5 		ldr	r0, [r0, #24]
+ 394              	.LVL19:
+ 395 0258 FEFFFFEB 		bl	__floatsisf
+ 396 025c 0010A0E1 		mov	r1, r0
+ 397 0260 100094E5 		ldr	r0, [r4, #16]	@ float
+ 398 0264 FEFFFFEB 		bl	__divsf3
+ 399 0268 100084E5 		str	r0, [r4, #16]	@ float
+ 148:../Library/hmc5843/HMC5843.cpp **** 	return zc;
+ 149:../Library/hmc5843/HMC5843.cpp **** }
+ 400              		.loc 1 149 0
+ 401 026c 1040BDE8 		ldmfd	sp!, {r4, lr}
+ 402 0270 1EFF2FE1 		bx	lr
+ 403              		.cfi_endproc
+ 404              	.LFE9:
+ 406              		.global	__gtsf2
+ 407              		.global	__extendsfdf2
+ 408              		.global	__muldf3
+ 409              		.global	__subdf3
+ 410              		.global	__truncdfsf2
+ 411              		.global	__ltsf2
+ 412              		.align	2
+ 413              		.global	_ZN8cHMC584310getHeadingEv
+ 415              	_ZN8cHMC584310getHeadingEv:
+ 416              	.LFB10:
+ 150:../Library/hmc5843/HMC5843.cpp **** 
+ 151:../Library/hmc5843/HMC5843.cpp **** float cHMC5843::getHeading(void)
+ 152:../Library/hmc5843/HMC5843.cpp **** {
+ 417              		.loc 1 152 0
+ 418              		.cfi_startproc
+ 419              		@ Function supports interworking.
+ 420              		@ args = 0, pretend = 0, frame = 0
+ 421              		@ frame_needed = 0, uses_anonymous_args = 0
+ 422              	.LVL20:
+ 423 0274 F0402DE9 		stmfd	sp!, {r4, r5, r6, r7, lr}
+ 424              	.LCFI8:
+ 425              		.cfi_def_cfa_offset 20
+ 426              		.cfi_offset 14, -4
+ 427              		.cfi_offset 7, -8
+ 428              		.cfi_offset 6, -12
+ 429              		.cfi_offset 5, -16
+ 430              		.cfi_offset 4, -20
+ 431              		.loc 1 152 0
+ 432 0278 0040A0E1 		mov	r4, r0
+ 153:../Library/hmc5843/HMC5843.cpp **** 	getX();
+ 433              		.loc 1 153 0
+ 434 027c FEFFFFEB 		bl	_ZN8cHMC58434getXEv
+ 435              	.LVL21:
+ 154:../Library/hmc5843/HMC5843.cpp **** 	getY();
+ 436              		.loc 1 154 0
+ 437 0280 0400A0E1 		mov	r0, r4
+ 438 0284 FEFFFFEB 		bl	_ZN8cHMC58434getYEv
+ 155:../Library/hmc5843/HMC5843.cpp **** 	getZ();
+ 439              		.loc 1 155 0
+ 440 0288 0400A0E1 		mov	r0, r4
+ 441 028c FEFFFFEB 		bl	_ZN8cHMC58434getZEv
+ 156:../Library/hmc5843/HMC5843.cpp **** 	
+ 157:../Library/hmc5843/HMC5843.cpp **** 	if(yc > 0)
+ 442              		.loc 1 157 0
+ 443 0290 0C5094E5 		ldr	r5, [r4, #12]	@ float
+ 444 0294 0060A0E3 		mov	r6, #0
+ 445 0298 0500A0E1 		mov	r0, r5
+ 446 029c 0610A0E1 		mov	r1, r6
+ 447 02a0 FEFFFFEB 		bl	__gtsf2
+ 448 02a4 000050E3 		cmp	r0, #0
+ 449 02a8 110000DA 		ble	.L36
+ 158:../Library/hmc5843/HMC5843.cpp **** 	{
+ 159:../Library/hmc5843/HMC5843.cpp **** 		heading = 90-(atan2(xc,yc))*(180/3.14);
+ 450              		.loc 1 159 0
+ 451 02ac 080094E5 		ldr	r0, [r4, #8]	@ float
+ 452 02b0 FEFFFFEB 		bl	__extendsfdf2
+ 453 02b4 0060A0E1 		mov	r6, r0
+ 454 02b8 0500A0E1 		mov	r0, r5
+ 455 02bc 0170A0E1 		mov	r7, r1
+ 456 02c0 FEFFFFEB 		bl	__extendsfdf2
+ 457 02c4 0020A0E1 		mov	r2, r0
+ 458 02c8 0130A0E1 		mov	r3, r1
+ 459 02cc 0600A0E1 		mov	r0, r6
+ 460 02d0 0710A0E1 		mov	r1, r7
+ 461 02d4 FEFFFFEB 		bl	atan2
+ 462 02d8 A4209FE5 		ldr	r2, .L40
+ 463 02dc A4309FE5 		ldr	r3, .L40+4
+ 464 02e0 FEFFFFEB 		bl	__muldf3
+ 465 02e4 0020A0E1 		mov	r2, r0
+ 466 02e8 0130A0E1 		mov	r3, r1
+ 467 02ec 98009FE5 		ldr	r0, .L40+8
+ 468 02f0 150000EA 		b	.L39
+ 469              	.L36:
+ 160:../Library/hmc5843/HMC5843.cpp **** 	}
+ 161:../Library/hmc5843/HMC5843.cpp **** 	else if(yc < 0)
+ 470              		.loc 1 161 0
+ 471 02f4 0500A0E1 		mov	r0, r5
+ 472 02f8 0610A0E1 		mov	r1, r6
+ 473 02fc FEFFFFEB 		bl	__ltsf2
+ 474 0300 000050E3 		cmp	r0, #0
+ 162:../Library/hmc5843/HMC5843.cpp **** 	{
+ 163:../Library/hmc5843/HMC5843.cpp **** 		heading = 270-(atan2(xc,yc))*(180/3.14);
+ 475              		.loc 1 163 0
+ 476 0304 080094E5 		ldr	r0, [r4, #8]	@ float
+ 161:../Library/hmc5843/HMC5843.cpp **** 	else if(yc < 0)
+ 477              		.loc 1 161 0
+ 478 0308 140000AA 		bge	.L37
+ 479              		.loc 1 163 0
+ 480 030c FEFFFFEB 		bl	__extendsfdf2
+ 481 0310 0060A0E1 		mov	r6, r0
+ 482 0314 0500A0E1 		mov	r0, r5
+ 483 0318 0170A0E1 		mov	r7, r1
+ 484 031c FEFFFFEB 		bl	__extendsfdf2
+ 485 0320 0020A0E1 		mov	r2, r0
+ 486 0324 0130A0E1 		mov	r3, r1
+ 487 0328 0600A0E1 		mov	r0, r6
+ 488 032c 0710A0E1 		mov	r1, r7
+ 489 0330 FEFFFFEB 		bl	atan2
+ 490 0334 48209FE5 		ldr	r2, .L40
+ 491 0338 48309FE5 		ldr	r3, .L40+4
+ 492 033c FEFFFFEB 		bl	__muldf3
+ 493 0340 0020A0E1 		mov	r2, r0
+ 494 0344 44009FE5 		ldr	r0, .L40+12
+ 495 0348 0130A0E1 		mov	r3, r1
+ 496              	.L39:
+ 497 034c 0010A0E3 		mov	r1, #0
+ 498 0350 FEFFFFEB 		bl	__subdf3
+ 499 0354 FEFFFFEB 		bl	__truncdfsf2
+ 500 0358 140084E5 		str	r0, [r4, #20]	@ float
+ 501 035c 050000EA 		b	.L28
+ 502              	.L37:
+ 164:../Library/hmc5843/HMC5843.cpp **** 	}
+ 165:../Library/hmc5843/HMC5843.cpp **** 	else
+ 166:../Library/hmc5843/HMC5843.cpp **** 	{
+ 167:../Library/hmc5843/HMC5843.cpp **** 		if(xc > 0)
+ 503              		.loc 1 167 0
+ 504 0360 0610A0E1 		mov	r1, r6
+ 505 0364 FEFFFFEB 		bl	__gtsf2
+ 506 0368 000050E3 		cmp	r0, #0
+ 168:../Library/hmc5843/HMC5843.cpp **** 		{
+ 169:../Library/hmc5843/HMC5843.cpp **** 			heading = 180.0;
+ 507              		.loc 1 169 0
+ 508 036c 20309FC5 		ldrgt	r3, .L40+16
+ 170:../Library/hmc5843/HMC5843.cpp **** 		}
+ 171:../Library/hmc5843/HMC5843.cpp **** 		else
+ 172:../Library/hmc5843/HMC5843.cpp **** 		{
+ 173:../Library/hmc5843/HMC5843.cpp **** 			heading = 0.0;
+ 509              		.loc 1 173 0
+ 510 0370 146084D5 		strle	r6, [r4, #20]	@ float
+ 169:../Library/hmc5843/HMC5843.cpp **** 			heading = 180.0;
+ 511              		.loc 1 169 0
+ 512 0374 143084C5 		strgt	r3, [r4, #20]	@ float
+ 513              	.L28:
+ 174:../Library/hmc5843/HMC5843.cpp **** 		}
+ 175:../Library/hmc5843/HMC5843.cpp **** 	}
+ 176:../Library/hmc5843/HMC5843.cpp **** 	return heading;
+ 177:../Library/hmc5843/HMC5843.cpp **** 	
+ 178:../Library/hmc5843/HMC5843.cpp **** }
+ 514              		.loc 1 178 0
+ 515 0378 140094E5 		ldr	r0, [r4, #20]	@ float
+ 516 037c F040BDE8 		ldmfd	sp!, {r4, r5, r6, r7, lr}
+ 517 0380 1EFF2FE1 		bx	lr
+ 518              	.L41:
+ 519              		.align	2
+ 520              	.L40:
+ 521 0384 94A94C40 		.word	1078765972
+ 522 0388 E79AD561 		.word	1641388775
+ 523 038c 00805640 		.word	1079410688
+ 524 0390 00E07040 		.word	1081139200
+ 525 0394 00003443 		.word	1127481344
+ 526              		.cfi_endproc
+ 527              	.LFE10:
+ 529              		.section	.text.startup,"ax",%progbits
+ 530              		.align	2
+ 532              	_GLOBAL__sub_I_compass:
+ 533              	.LFB12:
+ 534              		.loc 1 178 0
+ 535              		.cfi_startproc
+ 536              		@ Function supports interworking.
+ 537              		@ args = 0, pretend = 0, frame = 0
+ 538              		@ frame_needed = 0, uses_anonymous_args = 0
+ 539              	.LVL22:
+ 540 0000 10402DE9 		stmfd	sp!, {r4, lr}
+ 541              	.LCFI9:
+ 542              		.cfi_def_cfa_offset 8
+ 543              		.cfi_offset 14, -4
+ 544              		.cfi_offset 4, -8
+ 545              	.LBB10:
+ 546              	.LBB11:
+ 547              	.LBB12:
+  58:../Library/hmc5843/HMC5843.cpp **** cHMC5843::cHMC5843(int port, char i2c_address)
+ 548              		.loc 1 58 0
+ 549 0004 1C409FE5 		ldr	r4, .L43
+ 550 0008 0400A0E1 		mov	r0, r4
+ 551 000c FEFFFFEB 		bl	_ZN3I2CC2Ev
+  60:../Library/hmc5843/HMC5843.cpp **** 	_i2c_port = port;
+ 552              		.loc 1 60 0
+ 553 0010 0030A0E3 		mov	r3, #0
+ 554 0014 003084E5 		str	r3, [r4, #0]
+  61:../Library/hmc5843/HMC5843.cpp **** 	_i2c_address = i2c_address;
+ 555              		.loc 1 61 0
+ 556 0018 3C30A0E3 		mov	r3, #60
+ 557 001c 2230C4E5 		strb	r3, [r4, #34]
+ 558              	.LBE12:
+ 559              	.LBE11:
+ 560              	.LBE10:
+ 561              		.loc 1 178 0
+ 562 0020 1040BDE8 		ldmfd	sp!, {r4, lr}
+ 563 0024 1EFF2FE1 		bx	lr
+ 564              	.L44:
+ 565              		.align	2
+ 566              	.L43:
+ 567 0028 00000000 		.word	.LANCHOR0
+ 568              		.cfi_endproc
+ 569              	.LFE12:
+ 571              		.section	.ctors,"aw",%progbits
+ 572              		.align	2
+ 573 0000 00000000 		.word	_GLOBAL__sub_I_compass
+ 574              		.global	compass
+ 575              		.global	_ZN8cHMC5843C1Eic
+ 576              		.set	_ZN8cHMC5843C1Eic,_ZN8cHMC5843C2Eic
+ 577              		.bss
+ 578              		.align	2
+ 579              		.set	.LANCHOR0,. + 0
+ 582              	compass:
+ 583 0000 00000000 		.space	36
+ 583      00000000 
+ 583      00000000 
+ 583      00000000 
+ 583      00000000 
+ 584              		.text
+ 585              	.Letext0:
+ 586              		.file 2 "../Library/i2c/I2C.h"
+ 587              		.file 3 "../Library/hmc5843/HMC5843.h"
+ 588              		.file 4 "/opt/local/lib/gcc/arm-elf/4.6.1/../../../../arm-elf/include/stdint.h"
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 HMC5843.cpp
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccM7qRTz.s:5      .text:0000000000000000 $a
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccM7qRTz.s:8      .text:0000000000000000 _ZN8cHMC5843C2Eic
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccM7qRTz.s:45     .text:0000000000000024 _ZN8cHMC58435writeEPcc
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccM7qRTz.s:80     .text:000000000000004c _ZN8cHMC58434readEPcc
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccM7qRTz.s:121    .text:0000000000000084 _ZN8cHMC58435beginEc
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccM7qRTz.s:185    .text:00000000000000fc $d
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccM7qRTz.s:195    .text:000000000000011c $a
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccM7qRTz.s:232    .text:0000000000000164 $d
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccM7qRTz.s:241    .text:0000000000000178 $a
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccM7qRTz.s:244    .text:0000000000000178 _ZN8cHMC58436updateEv
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccM7qRTz.s:313    .text:00000000000001fc _ZN8cHMC58434getXEv
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccM7qRTz.s:345    .text:0000000000000224 _ZN8cHMC58434getYEv
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccM7qRTz.s:377    .text:000000000000024c _ZN8cHMC58434getZEv
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccM7qRTz.s:415    .text:0000000000000274 _ZN8cHMC584310getHeadingEv
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccM7qRTz.s:521    .text:0000000000000384 $d
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccM7qRTz.s:530    .text.startup:0000000000000000 $a
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccM7qRTz.s:532    .text.startup:0000000000000000 _GLOBAL__sub_I_compass
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccM7qRTz.s:567    .text.startup:0000000000000028 $d
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccM7qRTz.s:572    .ctors:0000000000000000 $d
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccM7qRTz.s:582    .bss:0000000000000000 compass
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccM7qRTz.s:8      .text:0000000000000000 _ZN8cHMC5843C1Eic
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//ccM7qRTz.s:578    .bss:0000000000000000 $d
+                     .debug_frame:0000000000000010 $d
+
+UNDEFINED SYMBOLS
+_ZN3I2CC2Ev
+_ZN3I2C4sendEcPccc
+_ZN3I2C9configureEv
+__floatsisf
+__divsf3
+__gtsf2
+__extendsfdf2
+__muldf3
+__subdf3
+__truncdfsf2
+__ltsf2
+atan2

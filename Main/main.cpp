@@ -372,7 +372,7 @@ void initPeripherals(void)
 	accelerometer.setCalibrationValues(configuration.cal_ax, configuration.cal_ay, configuration.cal_az);
 	gyro.setCalibrationValues(configuration.cal_gx, configuration.cal_gy, configuration.cal_gz);
 	
-	gps.begin(4800);
+	gps.begin(9600);
 	delay_ms(100);
 	gps.on();
 	delay_ms(500);

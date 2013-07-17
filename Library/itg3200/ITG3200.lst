@@ -1,0 +1,928 @@
+   1              		.file	"ITG3200.cpp"
+   2              		.text
+   3              	.Ltext0:
+   4              		.cfi_sections	.debug_frame
+   5              		.align	2
+   6              		.global	_ZN8cITG3200C2Eic
+   8              	_ZN8cITG3200C2Eic:
+   9              	.LFB1:
+  10              		.file 1 "../Library/itg3200/ITG3200.cpp"
+   1:../Library/itg3200/ITG3200.cpp **** /*
+   2:../Library/itg3200/ITG3200.cpp **** 	ITG3200 Library
+   3:../Library/itg3200/ITG3200.cpp **** 	
+   4:../Library/itg3200/ITG3200.cpp **** 	This libary contains functions to interact with the ITG3200
+   5:../Library/itg3200/ITG3200.cpp **** 	I2C.h must be included as the I2C class is inherited
+   6:../Library/itg3200/ITG3200.cpp **** 
+   7:../Library/itg3200/ITG3200.cpp **** 	created 8/30/10
+   8:../Library/itg3200/ITG3200.cpp **** 	by Ryan Owens
+   9:../Library/itg3200/ITG3200.cpp **** 	http://www.sparkfun.com
+  10:../Library/itg3200/ITG3200.cpp **** 	
+  11:../Library/itg3200/ITG3200.cpp **** 	Example Code:
+  12:../Library/itg3200/ITG3200.cpp **** 	char values[6];
+  13:../Library/itg3200/ITG3200.cpp **** 	
+  14:../Library/itg3200/ITG3200.cpp **** 	gyro.begin();
+  15:../Library/itg3200/ITG3200.cpp **** 	values[0]=WHO_AM_I;
+  16:../Library/itg3200/ITG3200.cpp **** 	gyro.read(values, 1);
+  17:../Library/itg3200/ITG3200.cpp **** 	rprintf("Who am I: %02x\n\r", values[0]);	
+  18:../Library/itg3200/ITG3200.cpp ****  
+  19:../Library/itg3200/ITG3200.cpp **** */
+  20:../Library/itg3200/ITG3200.cpp **** 
+  21:../Library/itg3200/ITG3200.cpp **** #include "ITG3200.h"
+  22:../Library/itg3200/ITG3200.cpp **** 
+  23:../Library/itg3200/ITG3200.cpp **** #include <stdlib.h>
+  24:../Library/itg3200/ITG3200.cpp **** #include <stdio.h>
+  25:../Library/itg3200/ITG3200.cpp **** #include "LPC21xx_SFE.h"
+  26:../Library/itg3200/ITG3200.cpp **** #include "main.h"
+  27:../Library/itg3200/ITG3200.cpp **** 
+  28:../Library/itg3200/ITG3200.cpp **** extern "C"
+  29:../Library/itg3200/ITG3200.cpp **** {
+  30:../Library/itg3200/ITG3200.cpp **** 	#include "rprintf.h"
+  31:../Library/itg3200/ITG3200.cpp **** 	#include "timer1.h"	
+  32:../Library/itg3200/ITG3200.cpp **** }
+  33:../Library/itg3200/ITG3200.cpp **** 
+  34:../Library/itg3200/ITG3200.cpp **** #define GLOBALOBJECT
+  35:../Library/itg3200/ITG3200.cpp **** 
+  36:../Library/itg3200/ITG3200.cpp **** cITG3200 gyro(0, ITG_ADDR);
+  37:../Library/itg3200/ITG3200.cpp **** 
+  38:../Library/itg3200/ITG3200.cpp **** 
+  39:../Library/itg3200/ITG3200.cpp **** cITG3200::cITG3200(int port, char i2c_address)
+  11              		.loc 1 39 0
+  12              		.cfi_startproc
+  13              		@ Function supports interworking.
+  14              		@ args = 0, pretend = 0, frame = 0
+  15              		@ frame_needed = 0, uses_anonymous_args = 0
+  16              	.LVL0:
+  17 0000 70402DE9 		stmfd	sp!, {r4, r5, r6, lr}
+  18              	.LCFI0:
+  19              		.cfi_def_cfa_offset 16
+  20              		.cfi_offset 14, -4
+  21              		.cfi_offset 6, -8
+  22              		.cfi_offset 5, -12
+  23              		.cfi_offset 4, -16
+  24              		.loc 1 39 0
+  25 0004 0040A0E1 		mov	r4, r0
+  26 0008 0150A0E1 		mov	r5, r1
+  27 000c FF6002E2 		and	r6, r2, #255
+  28              	.LBB4:
+  29 0010 FEFFFFEB 		bl	_ZN3I2CC2Ev
+  30              	.LVL1:
+  40:../Library/itg3200/ITG3200.cpp **** {
+  41:../Library/itg3200/ITG3200.cpp **** 	_i2c_port = port;
+  42:../Library/itg3200/ITG3200.cpp **** 	_i2c_address = i2c_address;
+  43:../Library/itg3200/ITG3200.cpp **** 	
+  44:../Library/itg3200/ITG3200.cpp **** 	x_cal=0;
+  31              		.loc 1 44 0
+  32 0014 0030A0E3 		mov	r3, #0
+  41:../Library/itg3200/ITG3200.cpp **** 	_i2c_port = port;
+  33              		.loc 1 41 0
+  34 0018 005084E5 		str	r5, [r4, #0]
+  42:../Library/itg3200/ITG3200.cpp **** 	_i2c_address = i2c_address;
+  35              		.loc 1 42 0
+  36 001c 2460C4E5 		strb	r6, [r4, #36]
+  37              		.loc 1 44 0
+  38 0020 B630C4E1 		strh	r3, [r4, #6]	@ movhi
+  45:../Library/itg3200/ITG3200.cpp **** 	y_cal=0;
+  39              		.loc 1 45 0
+  40 0024 B830C4E1 		strh	r3, [r4, #8]	@ movhi
+  46:../Library/itg3200/ITG3200.cpp **** 	z_cal=0;
+  41              		.loc 1 46 0
+  42 0028 BA30C4E1 		strh	r3, [r4, #10]	@ movhi
+  43              	.LBE4:
+  47:../Library/itg3200/ITG3200.cpp **** }
+  44              		.loc 1 47 0
+  45 002c 7040BDE8 		ldmfd	sp!, {r4, r5, r6, lr}
+  46 0030 1EFF2FE1 		bx	lr
+  47              		.cfi_endproc
+  48              	.LFE1:
+  50              		.align	2
+  51              		.global	_ZN8cITG32005writeEPcc
+  53              	_ZN8cITG32005writeEPcc:
+  54              	.LFB5:
+  48:../Library/itg3200/ITG3200.cpp **** 
+  49:../Library/itg3200/ITG3200.cpp **** void cITG3200::begin(void)
+  50:../Library/itg3200/ITG3200.cpp **** {
+  51:../Library/itg3200/ITG3200.cpp **** 	configure();
+  52:../Library/itg3200/ITG3200.cpp **** 	
+  53:../Library/itg3200/ITG3200.cpp **** 	//Set internal clock to 1kHz with 42Hz LPF and Full Scale to 3 for proper operation
+  54:../Library/itg3200/ITG3200.cpp **** 	values[0]=DLPF_FS;	
+  55:../Library/itg3200/ITG3200.cpp **** 	values[1]=(DLPF_FS_SEL_0|DLPF_FS_SEL_1|DLPF_CFG_0);
+  56:../Library/itg3200/ITG3200.cpp **** 	write(values, 2);	//Write the new data to the HMC register.
+  57:../Library/itg3200/ITG3200.cpp **** 	
+  58:../Library/itg3200/ITG3200.cpp **** 	//Set sample rate divider for 100 Hz operation
+  59:../Library/itg3200/ITG3200.cpp **** 	values[0] = SMPLRT_DIV;
+  60:../Library/itg3200/ITG3200.cpp **** 	values[1] = 9;	//Fsample = Fint / (divider + 1) where Fint is 1kHz
+  61:../Library/itg3200/ITG3200.cpp **** 	write(values, 2);
+  62:../Library/itg3200/ITG3200.cpp **** 	
+  63:../Library/itg3200/ITG3200.cpp **** 	//Setup the interrupt to trigger when new data is ready.
+  64:../Library/itg3200/ITG3200.cpp **** 	values[0]=INT_CFG;
+  65:../Library/itg3200/ITG3200.cpp **** 	values[1]=INT_CFG_RAW_RDY_EN | INT_CFG_ITG_RDY_EN;
+  66:../Library/itg3200/ITG3200.cpp **** 	write(values, 2);
+  67:../Library/itg3200/ITG3200.cpp **** 		
+  68:../Library/itg3200/ITG3200.cpp **** 	//Select X gyro PLL for clock source
+  69:../Library/itg3200/ITG3200.cpp **** 	values[0] = PWR_MGM;
+  70:../Library/itg3200/ITG3200.cpp **** 	values[1] = PWR_MGM_CLK_SEL_0;
+  71:../Library/itg3200/ITG3200.cpp **** 	write(values, 2);
+  72:../Library/itg3200/ITG3200.cpp **** 
+  73:../Library/itg3200/ITG3200.cpp **** 	//Wait for the PLL clocks to stabilize
+  74:../Library/itg3200/ITG3200.cpp **** 	values[0]=INT_STATUS;
+  75:../Library/itg3200/ITG3200.cpp **** 	read(values, 1);
+  76:../Library/itg3200/ITG3200.cpp **** 	/*
+  77:../Library/itg3200/ITG3200.cpp **** 	while(!(values[0] & INT_CFG_ITG_RDY_EN))
+  78:../Library/itg3200/ITG3200.cpp **** 	{
+  79:../Library/itg3200/ITG3200.cpp **** 		values[0]=INT_STATUS;
+  80:../Library/itg3200/ITG3200.cpp **** 		read(values, 1);
+  81:../Library/itg3200/ITG3200.cpp **** 	}*/	
+  82:../Library/itg3200/ITG3200.cpp **** 	
+  83:../Library/itg3200/ITG3200.cpp **** 	updated=0;
+  84:../Library/itg3200/ITG3200.cpp **** }
+  85:../Library/itg3200/ITG3200.cpp **** 
+  86:../Library/itg3200/ITG3200.cpp **** 
+  87:../Library/itg3200/ITG3200.cpp **** char cITG3200::read(char * value, char length){
+  88:../Library/itg3200/ITG3200.cpp **** 	
+  89:../Library/itg3200/ITG3200.cpp **** 	write(value, 1);	//Set up the i2c address to read from
+  90:../Library/itg3200/ITG3200.cpp **** 	return send(_i2c_address, value, READ, length);	
+  91:../Library/itg3200/ITG3200.cpp **** }
+  92:../Library/itg3200/ITG3200.cpp **** 
+  93:../Library/itg3200/ITG3200.cpp **** char cITG3200::write(char * value, char length){
+  55              		.loc 1 93 0
+  56              		.cfi_startproc
+  57              		@ Function supports interworking.
+  58              		@ args = 0, pretend = 0, frame = 0
+  59              		@ frame_needed = 0, uses_anonymous_args = 0
+  60              	.LVL2:
+  61 0034 01402DE9 		stmfd	sp!, {r0, lr}
+  62              	.LCFI1:
+  63              		.cfi_def_cfa_offset 8
+  64              		.cfi_offset 14, -4
+  65              		.cfi_offset 0, -8
+  66              		.loc 1 93 0
+  67 0038 0130A0E1 		mov	r3, r1
+  68 003c FF2002E2 		and	r2, r2, #255
+  69              	.LVL3:
+  94:../Library/itg3200/ITG3200.cpp **** 
+  95:../Library/itg3200/ITG3200.cpp **** 	return send(_i2c_address, value, WRITE, length);
+  70              		.loc 1 95 0
+  71 0040 2410D0E5 		ldrb	r1, [r0, #36]	@ zero_extendqisi2
+  72              	.LVL4:
+  73 0044 00208DE5 		str	r2, [sp, #0]
+  74 0048 0320A0E1 		mov	r2, r3
+  75 004c 0030A0E3 		mov	r3, #0
+  76              	.LVL5:
+  77 0050 FEFFFFEB 		bl	_ZN3I2C4sendEcPccc
+  78              	.LVL6:
+  96:../Library/itg3200/ITG3200.cpp **** }
+  79              		.loc 1 96 0
+  80 0054 0840BDE8 		ldmfd	sp!, {r3, lr}
+  81 0058 1EFF2FE1 		bx	lr
+  82              		.cfi_endproc
+  83              	.LFE5:
+  85              		.align	2
+  86              		.global	_ZN8cITG32004readEPcc
+  88              	_ZN8cITG32004readEPcc:
+  89              	.LFB4:
+  87:../Library/itg3200/ITG3200.cpp **** char cITG3200::read(char * value, char length){
+  90              		.loc 1 87 0
+  91              		.cfi_startproc
+  92              		@ Function supports interworking.
+  93              		@ args = 0, pretend = 0, frame = 0
+  94              		@ frame_needed = 0, uses_anonymous_args = 0
+  95              	.LVL7:
+  96 005c 71402DE9 		stmfd	sp!, {r0, r4, r5, r6, lr}
+  97              	.LCFI2:
+  98              		.cfi_def_cfa_offset 20
+  99              		.cfi_offset 14, -4
+ 100              		.cfi_offset 6, -8
+ 101              		.cfi_offset 5, -12
+ 102              		.cfi_offset 4, -16
+ 103              		.cfi_offset 0, -20
+  87:../Library/itg3200/ITG3200.cpp **** char cITG3200::read(char * value, char length){
+ 104              		.loc 1 87 0
+ 105 0060 0040A0E1 		mov	r4, r0
+ 106 0064 0150A0E1 		mov	r5, r1
+ 107 0068 FF6002E2 		and	r6, r2, #255
+  89:../Library/itg3200/ITG3200.cpp **** 	write(value, 1);	//Set up the i2c address to read from
+ 108              		.loc 1 89 0
+ 109 006c 0120A0E3 		mov	r2, #1
+ 110              	.LVL8:
+ 111 0070 FEFFFFEB 		bl	_ZN8cITG32005writeEPcc
+ 112              	.LVL9:
+  90:../Library/itg3200/ITG3200.cpp **** 	return send(_i2c_address, value, READ, length);	
+ 113              		.loc 1 90 0
+ 114 0074 2410D4E5 		ldrb	r1, [r4, #36]	@ zero_extendqisi2
+ 115 0078 0400A0E1 		mov	r0, r4
+ 116 007c 0520A0E1 		mov	r2, r5
+ 117 0080 0130A0E3 		mov	r3, #1
+ 118 0084 00608DE5 		str	r6, [sp, #0]
+ 119 0088 FEFFFFEB 		bl	_ZN3I2C4sendEcPccc
+  91:../Library/itg3200/ITG3200.cpp **** }
+ 120              		.loc 1 91 0
+ 121 008c 7840BDE8 		ldmfd	sp!, {r3, r4, r5, r6, lr}
+ 122 0090 1EFF2FE1 		bx	lr
+ 123              		.cfi_endproc
+ 124              	.LFE4:
+ 126              		.align	2
+ 127              		.global	_ZN8cITG32005beginEv
+ 129              	_ZN8cITG32005beginEv:
+ 130              	.LFB3:
+  50:../Library/itg3200/ITG3200.cpp **** {
+ 131              		.loc 1 50 0
+ 132              		.cfi_startproc
+ 133              		@ Function supports interworking.
+ 134              		@ args = 0, pretend = 0, frame = 0
+ 135              		@ frame_needed = 0, uses_anonymous_args = 0
+ 136              	.LVL10:
+ 137 0094 70402DE9 		stmfd	sp!, {r4, r5, r6, lr}
+ 138              	.LCFI3:
+ 139              		.cfi_def_cfa_offset 16
+ 140              		.cfi_offset 14, -4
+ 141              		.cfi_offset 6, -8
+ 142              		.cfi_offset 5, -12
+ 143              		.cfi_offset 4, -16
+  50:../Library/itg3200/ITG3200.cpp **** {
+ 144              		.loc 1 50 0
+ 145 0098 0040A0E1 		mov	r4, r0
+  51:../Library/itg3200/ITG3200.cpp **** 	configure();
+ 146              		.loc 1 51 0
+ 147 009c FEFFFFEB 		bl	_ZN3I2C9configureEv
+ 148              	.LVL11:
+  54:../Library/itg3200/ITG3200.cpp **** 	values[0]=DLPF_FS;	
+ 149              		.loc 1 54 0
+ 150 00a0 1630A0E3 		mov	r3, #22
+  56:../Library/itg3200/ITG3200.cpp **** 	write(values, 2);	//Write the new data to the HMC register.
+ 151              		.loc 1 56 0
+ 152 00a4 1C5084E2 		add	r5, r4, #28
+  54:../Library/itg3200/ITG3200.cpp **** 	values[0]=DLPF_FS;	
+ 153              		.loc 1 54 0
+ 154 00a8 1C30C4E5 		strb	r3, [r4, #28]
+  55:../Library/itg3200/ITG3200.cpp **** 	values[1]=(DLPF_FS_SEL_0|DLPF_FS_SEL_1|DLPF_CFG_0);
+ 155              		.loc 1 55 0
+ 156 00ac 1930A0E3 		mov	r3, #25
+ 157 00b0 1D30C4E5 		strb	r3, [r4, #29]
+  56:../Library/itg3200/ITG3200.cpp **** 	write(values, 2);	//Write the new data to the HMC register.
+ 158              		.loc 1 56 0
+ 159 00b4 0510A0E1 		mov	r1, r5
+ 160 00b8 0220A0E3 		mov	r2, #2
+ 161 00bc 0400A0E1 		mov	r0, r4
+ 162 00c0 FEFFFFEB 		bl	_ZN8cITG32005writeEPcc
+  59:../Library/itg3200/ITG3200.cpp **** 	values[0] = SMPLRT_DIV;
+ 163              		.loc 1 59 0
+ 164 00c4 1530A0E3 		mov	r3, #21
+ 165 00c8 1C30C4E5 		strb	r3, [r4, #28]
+  60:../Library/itg3200/ITG3200.cpp **** 	values[1] = 9;	//Fsample = Fint / (divider + 1) where Fint is 1kHz
+ 166              		.loc 1 60 0
+ 167 00cc 0930A0E3 		mov	r3, #9
+ 168 00d0 1D30C4E5 		strb	r3, [r4, #29]
+  61:../Library/itg3200/ITG3200.cpp **** 	write(values, 2);
+ 169              		.loc 1 61 0
+ 170 00d4 0510A0E1 		mov	r1, r5
+ 171 00d8 0220A0E3 		mov	r2, #2
+ 172 00dc 0400A0E1 		mov	r0, r4
+ 173 00e0 FEFFFFEB 		bl	_ZN8cITG32005writeEPcc
+  64:../Library/itg3200/ITG3200.cpp **** 	values[0]=INT_CFG;
+ 174              		.loc 1 64 0
+ 175 00e4 1730A0E3 		mov	r3, #23
+ 176 00e8 1C30C4E5 		strb	r3, [r4, #28]
+  65:../Library/itg3200/ITG3200.cpp **** 	values[1]=INT_CFG_RAW_RDY_EN | INT_CFG_ITG_RDY_EN;
+ 177              		.loc 1 65 0
+ 178 00ec 0530A0E3 		mov	r3, #5
+ 179 00f0 1D30C4E5 		strb	r3, [r4, #29]
+  66:../Library/itg3200/ITG3200.cpp **** 	write(values, 2);
+ 180              		.loc 1 66 0
+ 181 00f4 0510A0E1 		mov	r1, r5
+ 182 00f8 0220A0E3 		mov	r2, #2
+ 183 00fc 0400A0E1 		mov	r0, r4
+ 184 0100 FEFFFFEB 		bl	_ZN8cITG32005writeEPcc
+  70:../Library/itg3200/ITG3200.cpp **** 	values[1] = PWR_MGM_CLK_SEL_0;
+ 185              		.loc 1 70 0
+ 186 0104 0160A0E3 		mov	r6, #1
+  69:../Library/itg3200/ITG3200.cpp **** 	values[0] = PWR_MGM;
+ 187              		.loc 1 69 0
+ 188 0108 3E30A0E3 		mov	r3, #62
+ 189 010c 1C30C4E5 		strb	r3, [r4, #28]
+  71:../Library/itg3200/ITG3200.cpp **** 	write(values, 2);
+ 190              		.loc 1 71 0
+ 191 0110 0510A0E1 		mov	r1, r5
+ 192 0114 0220A0E3 		mov	r2, #2
+  70:../Library/itg3200/ITG3200.cpp **** 	values[1] = PWR_MGM_CLK_SEL_0;
+ 193              		.loc 1 70 0
+ 194 0118 1D60C4E5 		strb	r6, [r4, #29]
+  71:../Library/itg3200/ITG3200.cpp **** 	write(values, 2);
+ 195              		.loc 1 71 0
+ 196 011c 0400A0E1 		mov	r0, r4
+ 197 0120 FEFFFFEB 		bl	_ZN8cITG32005writeEPcc
+  74:../Library/itg3200/ITG3200.cpp **** 	values[0]=INT_STATUS;
+ 198              		.loc 1 74 0
+ 199 0124 1A30A0E3 		mov	r3, #26
+ 200 0128 1C30C4E5 		strb	r3, [r4, #28]
+  75:../Library/itg3200/ITG3200.cpp **** 	read(values, 1);
+ 201              		.loc 1 75 0
+ 202 012c 0400A0E1 		mov	r0, r4
+ 203 0130 0510A0E1 		mov	r1, r5
+ 204 0134 0620A0E1 		mov	r2, r6
+ 205 0138 FEFFFFEB 		bl	_ZN8cITG32004readEPcc
+  83:../Library/itg3200/ITG3200.cpp **** 	updated=0;
+ 206              		.loc 1 83 0
+ 207 013c 0030A0E3 		mov	r3, #0
+ 208 0140 0430C4E5 		strb	r3, [r4, #4]
+  84:../Library/itg3200/ITG3200.cpp **** }
+ 209              		.loc 1 84 0
+ 210 0144 7040BDE8 		ldmfd	sp!, {r4, r5, r6, lr}
+ 211 0148 1EFF2FE1 		bx	lr
+ 212              		.cfi_endproc
+ 213              	.LFE3:
+ 215              		.global	__floatsisf
+ 216              		.align	2
+ 217              		.global	_ZN8cITG32006updateEv
+ 219              	_ZN8cITG32006updateEv:
+ 220              	.LFB6:
+  97:../Library/itg3200/ITG3200.cpp **** 
+  98:../Library/itg3200/ITG3200.cpp **** char cITG3200::update(void)
+  99:../Library/itg3200/ITG3200.cpp **** {
+ 221              		.loc 1 99 0
+ 222              		.cfi_startproc
+ 223              		@ Function supports interworking.
+ 224              		@ args = 0, pretend = 0, frame = 0
+ 225              		@ frame_needed = 0, uses_anonymous_args = 0
+ 226              	.LVL12:
+ 227 014c 70402DE9 		stmfd	sp!, {r4, r5, r6, lr}
+ 228              	.LCFI4:
+ 229              		.cfi_def_cfa_offset 16
+ 230              		.cfi_offset 14, -4
+ 231              		.cfi_offset 6, -8
+ 232              		.cfi_offset 5, -12
+ 233              		.cfi_offset 4, -16
+ 100:../Library/itg3200/ITG3200.cpp **** 	values[0]=INT_STATUS;
+ 234              		.loc 1 100 0
+ 235 0150 1A30A0E3 		mov	r3, #26
+ 236 0154 0050A0E1 		mov	r5, r0
+ 237 0158 1C30E5E5 		strb	r3, [r5, #28]!
+  99:../Library/itg3200/ITG3200.cpp **** {
+ 238              		.loc 1 99 0
+ 239 015c 0040A0E1 		mov	r4, r0
+ 101:../Library/itg3200/ITG3200.cpp **** 	read(values, 1);
+ 240              		.loc 1 101 0
+ 241 0160 0510A0E1 		mov	r1, r5
+ 242 0164 0120A0E3 		mov	r2, #1
+ 243 0168 FEFFFFEB 		bl	_ZN8cITG32004readEPcc
+ 244              	.LVL13:
+ 102:../Library/itg3200/ITG3200.cpp **** 	
+ 103:../Library/itg3200/ITG3200.cpp **** 	if(values[0] == (1<<0))
+ 245              		.loc 1 103 0
+ 246 016c 1C60D4E5 		ldrb	r6, [r4, #28]	@ zero_extendqisi2
+ 247 0170 010056E3 		cmp	r6, #1
+ 104:../Library/itg3200/ITG3200.cpp **** 	{
+ 105:../Library/itg3200/ITG3200.cpp **** 		values[0]=TEMP_OUT_H;
+ 106:../Library/itg3200/ITG3200.cpp **** 		if(read(values, 8))
+ 107:../Library/itg3200/ITG3200.cpp **** 		{
+ 108:../Library/itg3200/ITG3200.cpp **** 			tempr = (int16_t)((values[0]<<8)|values[1]);
+ 109:../Library/itg3200/ITG3200.cpp **** 			xr = (int16_t)((values[2]<<8)|values[3]);
+ 110:../Library/itg3200/ITG3200.cpp **** 			yr = (int16_t)((values[4]<<8)|values[5]);
+ 111:../Library/itg3200/ITG3200.cpp **** 			zr = (int16_t)((values[6]<<8)|values[7]);
+ 112:../Library/itg3200/ITG3200.cpp **** 		}
+ 113:../Library/itg3200/ITG3200.cpp **** 		else return 0;
+ 114:../Library/itg3200/ITG3200.cpp **** 	}
+ 115:../Library/itg3200/ITG3200.cpp **** 	else return 0;
+ 248              		.loc 1 115 0
+ 249 0174 0000A013 		movne	r0, #0
+ 103:../Library/itg3200/ITG3200.cpp **** 	if(values[0] == (1<<0))
+ 250              		.loc 1 103 0
+ 251 0178 2400001A 		bne	.L6
+ 105:../Library/itg3200/ITG3200.cpp **** 		values[0]=TEMP_OUT_H;
+ 252              		.loc 1 105 0
+ 253 017c 1B30A0E3 		mov	r3, #27
+ 254 0180 1C30C4E5 		strb	r3, [r4, #28]
+ 106:../Library/itg3200/ITG3200.cpp **** 		if(read(values, 8))
+ 255              		.loc 1 106 0
+ 256 0184 0400A0E1 		mov	r0, r4
+ 257 0188 0510A0E1 		mov	r1, r5
+ 258 018c 0820A0E3 		mov	r2, #8
+ 259 0190 FEFFFFEB 		bl	_ZN8cITG32004readEPcc
+ 260 0194 000050E3 		cmp	r0, #0
+ 261 0198 1C00000A 		beq	.L6
+ 108:../Library/itg3200/ITG3200.cpp **** 			tempr = (int16_t)((values[0]<<8)|values[1]);
+ 262              		.loc 1 108 0
+ 263 019c 1D30D4E5 		ldrb	r3, [r4, #29]	@ zero_extendqisi2
+ 264 01a0 1C00D4E5 		ldrb	r0, [r4, #28]	@ zero_extendqisi2
+ 265 01a4 000483E1 		orr	r0, r3, r0, asl #8
+ 266 01a8 0008A0E1 		mov	r0, r0, asl #16
+ 267 01ac 4008A0E1 		mov	r0, r0, asr #16
+ 268 01b0 FEFFFFEB 		bl	__floatsisf
+ 109:../Library/itg3200/ITG3200.cpp **** 			xr = (int16_t)((values[2]<<8)|values[3]);
+ 269              		.loc 1 109 0
+ 270 01b4 1F30D4E5 		ldrb	r3, [r4, #31]	@ zero_extendqisi2
+ 108:../Library/itg3200/ITG3200.cpp **** 			tempr = (int16_t)((values[0]<<8)|values[1]);
+ 271              		.loc 1 108 0
+ 272 01b8 180084E5 		str	r0, [r4, #24]	@ float
+ 109:../Library/itg3200/ITG3200.cpp **** 			xr = (int16_t)((values[2]<<8)|values[3]);
+ 273              		.loc 1 109 0
+ 274 01bc 1E00D4E5 		ldrb	r0, [r4, #30]	@ zero_extendqisi2
+ 275 01c0 000483E1 		orr	r0, r3, r0, asl #8
+ 276 01c4 0008A0E1 		mov	r0, r0, asl #16
+ 277 01c8 4008A0E1 		mov	r0, r0, asr #16
+ 278 01cc FEFFFFEB 		bl	__floatsisf
+ 110:../Library/itg3200/ITG3200.cpp **** 			yr = (int16_t)((values[4]<<8)|values[5]);
+ 279              		.loc 1 110 0
+ 280 01d0 2130D4E5 		ldrb	r3, [r4, #33]	@ zero_extendqisi2
+ 109:../Library/itg3200/ITG3200.cpp **** 			xr = (int16_t)((values[2]<<8)|values[3]);
+ 281              		.loc 1 109 0
+ 282 01d4 0C0084E5 		str	r0, [r4, #12]	@ float
+ 110:../Library/itg3200/ITG3200.cpp **** 			yr = (int16_t)((values[4]<<8)|values[5]);
+ 283              		.loc 1 110 0
+ 284 01d8 2000D4E5 		ldrb	r0, [r4, #32]	@ zero_extendqisi2
+ 285 01dc 000483E1 		orr	r0, r3, r0, asl #8
+ 286 01e0 0008A0E1 		mov	r0, r0, asl #16
+ 287 01e4 4008A0E1 		mov	r0, r0, asr #16
+ 288 01e8 FEFFFFEB 		bl	__floatsisf
+ 111:../Library/itg3200/ITG3200.cpp **** 			zr = (int16_t)((values[6]<<8)|values[7]);
+ 289              		.loc 1 111 0
+ 290 01ec 2330D4E5 		ldrb	r3, [r4, #35]	@ zero_extendqisi2
+ 110:../Library/itg3200/ITG3200.cpp **** 			yr = (int16_t)((values[4]<<8)|values[5]);
+ 291              		.loc 1 110 0
+ 292 01f0 100084E5 		str	r0, [r4, #16]	@ float
+ 111:../Library/itg3200/ITG3200.cpp **** 			zr = (int16_t)((values[6]<<8)|values[7]);
+ 293              		.loc 1 111 0
+ 294 01f4 2200D4E5 		ldrb	r0, [r4, #34]	@ zero_extendqisi2
+ 295 01f8 000483E1 		orr	r0, r3, r0, asl #8
+ 296 01fc 0008A0E1 		mov	r0, r0, asl #16
+ 297 0200 4008A0E1 		mov	r0, r0, asr #16
+ 298 0204 FEFFFFEB 		bl	__floatsisf
+ 299 0208 140084E5 		str	r0, [r4, #20]	@ float
+ 116:../Library/itg3200/ITG3200.cpp **** 	return 1;
+ 300              		.loc 1 116 0
+ 301 020c 0600A0E1 		mov	r0, r6
+ 302              	.L6:
+ 117:../Library/itg3200/ITG3200.cpp **** }
+ 303              		.loc 1 117 0
+ 304 0210 7040BDE8 		ldmfd	sp!, {r4, r5, r6, lr}
+ 305 0214 1EFF2FE1 		bx	lr
+ 306              		.cfi_endproc
+ 307              	.LFE6:
+ 309              		.global	__fixsfsi
+ 310              		.align	2
+ 311              		.global	_ZN8cITG32009calibrateEv
+ 313              	_ZN8cITG32009calibrateEv:
+ 314              	.LFB7:
+ 118:../Library/itg3200/ITG3200.cpp **** 
+ 119:../Library/itg3200/ITG3200.cpp **** void cITG3200::calibrate(void)
+ 120:../Library/itg3200/ITG3200.cpp **** {
+ 315              		.loc 1 120 0
+ 316              		.cfi_startproc
+ 317              		@ Function supports interworking.
+ 318              		@ args = 0, pretend = 0, frame = 0
+ 319              		@ frame_needed = 0, uses_anonymous_args = 0
+ 320              	.LVL14:
+ 321 0218 30402DE9 		stmfd	sp!, {r4, r5, lr}
+ 322              	.LCFI5:
+ 323              		.cfi_def_cfa_offset 12
+ 324              		.cfi_offset 14, -4
+ 325              		.cfi_offset 5, -8
+ 326              		.cfi_offset 4, -12
+ 327              		.loc 1 120 0
+ 328 021c 0040A0E1 		mov	r4, r0
+ 329 0220 1050A0E3 		mov	r5, #16
+ 330              	.LVL15:
+ 331              	.L10:
+ 332              	.LBB5:
+ 333              	.LBB6:
+ 121:../Library/itg3200/ITG3200.cpp **** 	for(int i=0; i<16; i++)
+ 122:../Library/itg3200/ITG3200.cpp **** 	{
+ 123:../Library/itg3200/ITG3200.cpp **** 		update();	//Get new values while device is not moving
+ 334              		.loc 1 123 0 discriminator 2
+ 335 0224 0400A0E1 		mov	r0, r4
+ 336 0228 FEFFFFEB 		bl	_ZN8cITG32006updateEv
+ 124:../Library/itg3200/ITG3200.cpp **** 		x_cal+=(int16_t)xr;
+ 337              		.loc 1 124 0 discriminator 2
+ 338 022c 0C0094E5 		ldr	r0, [r4, #12]	@ float
+ 339 0230 FEFFFFEB 		bl	__fixsfsi
+ 340 0234 B630D4E1 		ldrh	r3, [r4, #6]
+ 341 0238 033080E0 		add	r3, r0, r3
+ 342 023c B630C4E1 		strh	r3, [r4, #6]	@ movhi
+ 125:../Library/itg3200/ITG3200.cpp **** 		y_cal+=(int16_t)yr;
+ 343              		.loc 1 125 0 discriminator 2
+ 344 0240 100094E5 		ldr	r0, [r4, #16]	@ float
+ 345 0244 FEFFFFEB 		bl	__fixsfsi
+ 346 0248 B830D4E1 		ldrh	r3, [r4, #8]
+ 347 024c 033080E0 		add	r3, r0, r3
+ 348 0250 B830C4E1 		strh	r3, [r4, #8]	@ movhi
+ 126:../Library/itg3200/ITG3200.cpp **** 		z_cal+=(int16_t)zr;
+ 349              		.loc 1 126 0 discriminator 2
+ 350 0254 140094E5 		ldr	r0, [r4, #20]	@ float
+ 351 0258 FEFFFFEB 		bl	__fixsfsi
+ 352 025c BA30D4E1 		ldrh	r3, [r4, #10]
+ 353 0260 033080E0 		add	r3, r0, r3
+ 354 0264 BA30C4E1 		strh	r3, [r4, #10]	@ movhi
+ 127:../Library/itg3200/ITG3200.cpp **** 		delay_ms(100);
+ 355              		.loc 1 127 0 discriminator 2
+ 356 0268 6400A0E3 		mov	r0, #100
+ 357 026c FEFFFFEB 		bl	delay_ms
+ 121:../Library/itg3200/ITG3200.cpp **** 	for(int i=0; i<16; i++)
+ 358              		.loc 1 121 0 discriminator 2
+ 359 0270 015055E2 		subs	r5, r5, #1
+ 360 0274 EAFFFF1A 		bne	.L10
+ 361              	.LBE6:
+ 128:../Library/itg3200/ITG3200.cpp **** 	}
+ 129:../Library/itg3200/ITG3200.cpp **** 	x_cal/=16;
+ 362              		.loc 1 129 0
+ 363 0278 F630D4E1 		ldrsh	r3, [r4, #6]
+ 364 027c 0F2083E2 		add	r2, r3, #15
+ 365 0280 000053E3 		cmp	r3, #0
+ 366 0284 0230A0B1 		movlt	r3, r2
+ 367 0288 4332A0E1 		mov	r3, r3, asr #4
+ 368 028c B630C4E1 		strh	r3, [r4, #6]	@ movhi
+ 130:../Library/itg3200/ITG3200.cpp **** 	y_cal/=16;
+ 369              		.loc 1 130 0
+ 370 0290 F830D4E1 		ldrsh	r3, [r4, #8]
+ 371 0294 0F2083E2 		add	r2, r3, #15
+ 372 0298 000053E3 		cmp	r3, #0
+ 373 029c 0230A0B1 		movlt	r3, r2
+ 374 02a0 4332A0E1 		mov	r3, r3, asr #4
+ 375 02a4 B830C4E1 		strh	r3, [r4, #8]	@ movhi
+ 131:../Library/itg3200/ITG3200.cpp **** 	z_cal/=16;
+ 376              		.loc 1 131 0
+ 377 02a8 FA30D4E1 		ldrsh	r3, [r4, #10]
+ 378 02ac 0F2083E2 		add	r2, r3, #15
+ 379 02b0 000053E3 		cmp	r3, #0
+ 380 02b4 0230A0B1 		movlt	r3, r2
+ 381 02b8 4332A0E1 		mov	r3, r3, asr #4
+ 382 02bc BA30C4E1 		strh	r3, [r4, #10]	@ movhi
+ 383              	.LBE5:
+ 132:../Library/itg3200/ITG3200.cpp **** }
+ 384              		.loc 1 132 0
+ 385 02c0 3040BDE8 		ldmfd	sp!, {r4, r5, lr}
+ 386 02c4 1EFF2FE1 		bx	lr
+ 387              		.cfi_endproc
+ 388              	.LFE7:
+ 390              		.global	__subsf3
+ 391              		.global	__divsf3
+ 392              		.align	2
+ 393              		.global	_ZN8cITG32004getXEv
+ 395              	_ZN8cITG32004getXEv:
+ 396              	.LFB8:
+ 133:../Library/itg3200/ITG3200.cpp **** 
+ 134:../Library/itg3200/ITG3200.cpp **** float cITG3200::getX(void)
+ 135:../Library/itg3200/ITG3200.cpp **** {
+ 397              		.loc 1 135 0
+ 398              		.cfi_startproc
+ 399              		@ Function supports interworking.
+ 400              		@ args = 0, pretend = 0, frame = 0
+ 401              		@ frame_needed = 0, uses_anonymous_args = 0
+ 402              	.LVL16:
+ 403 02c8 10402DE9 		stmfd	sp!, {r4, lr}
+ 404              	.LCFI6:
+ 405              		.cfi_def_cfa_offset 8
+ 406              		.cfi_offset 14, -4
+ 407              		.cfi_offset 4, -8
+ 408              		.loc 1 135 0
+ 409 02cc 0040A0E1 		mov	r4, r0
+ 136:../Library/itg3200/ITG3200.cpp **** 	xr -= x_cal;
+ 410              		.loc 1 136 0
+ 411 02d0 F600D0E1 		ldrsh	r0, [r0, #6]
+ 412              	.LVL17:
+ 413 02d4 FEFFFFEB 		bl	__floatsisf
+ 414 02d8 0010A0E1 		mov	r1, r0
+ 415 02dc 0C0094E5 		ldr	r0, [r4, #12]	@ float
+ 416 02e0 FEFFFFEB 		bl	__subsf3
+ 137:../Library/itg3200/ITG3200.cpp **** 	xr = xr/14.375;
+ 417              		.loc 1 137 0
+ 418 02e4 0C109FE5 		ldr	r1, .L13
+ 419 02e8 FEFFFFEB 		bl	__divsf3
+ 420 02ec 0C0084E5 		str	r0, [r4, #12]	@ float
+ 138:../Library/itg3200/ITG3200.cpp **** 	return xr;
+ 139:../Library/itg3200/ITG3200.cpp **** }
+ 421              		.loc 1 139 0
+ 422 02f0 1040BDE8 		ldmfd	sp!, {r4, lr}
+ 423 02f4 1EFF2FE1 		bx	lr
+ 424              	.L14:
+ 425              		.align	2
+ 426              	.L13:
+ 427 02f8 00006641 		.word	1097203712
+ 428              		.cfi_endproc
+ 429              	.LFE8:
+ 431              		.align	2
+ 432              		.global	_ZN8cITG32004getYEv
+ 434              	_ZN8cITG32004getYEv:
+ 435              	.LFB9:
+ 140:../Library/itg3200/ITG3200.cpp **** 
+ 141:../Library/itg3200/ITG3200.cpp **** float cITG3200::getY(void)
+ 142:../Library/itg3200/ITG3200.cpp **** {
+ 436              		.loc 1 142 0
+ 437              		.cfi_startproc
+ 438              		@ Function supports interworking.
+ 439              		@ args = 0, pretend = 0, frame = 0
+ 440              		@ frame_needed = 0, uses_anonymous_args = 0
+ 441              	.LVL18:
+ 442 02fc 10402DE9 		stmfd	sp!, {r4, lr}
+ 443              	.LCFI7:
+ 444              		.cfi_def_cfa_offset 8
+ 445              		.cfi_offset 14, -4
+ 446              		.cfi_offset 4, -8
+ 447              		.loc 1 142 0
+ 448 0300 0040A0E1 		mov	r4, r0
+ 143:../Library/itg3200/ITG3200.cpp **** 	yr -= y_cal;
+ 449              		.loc 1 143 0
+ 450 0304 F800D0E1 		ldrsh	r0, [r0, #8]
+ 451              	.LVL19:
+ 452 0308 FEFFFFEB 		bl	__floatsisf
+ 453 030c 0010A0E1 		mov	r1, r0
+ 454 0310 100094E5 		ldr	r0, [r4, #16]	@ float
+ 455 0314 FEFFFFEB 		bl	__subsf3
+ 144:../Library/itg3200/ITG3200.cpp **** 	yr = yr/14.375;
+ 456              		.loc 1 144 0
+ 457 0318 0C109FE5 		ldr	r1, .L16
+ 458 031c FEFFFFEB 		bl	__divsf3
+ 459 0320 100084E5 		str	r0, [r4, #16]	@ float
+ 145:../Library/itg3200/ITG3200.cpp **** 	return yr;
+ 146:../Library/itg3200/ITG3200.cpp **** }
+ 460              		.loc 1 146 0
+ 461 0324 1040BDE8 		ldmfd	sp!, {r4, lr}
+ 462 0328 1EFF2FE1 		bx	lr
+ 463              	.L17:
+ 464              		.align	2
+ 465              	.L16:
+ 466 032c 00006641 		.word	1097203712
+ 467              		.cfi_endproc
+ 468              	.LFE9:
+ 470              		.align	2
+ 471              		.global	_ZN8cITG32004getZEv
+ 473              	_ZN8cITG32004getZEv:
+ 474              	.LFB10:
+ 147:../Library/itg3200/ITG3200.cpp **** 
+ 148:../Library/itg3200/ITG3200.cpp **** float cITG3200::getZ(void)
+ 149:../Library/itg3200/ITG3200.cpp **** {
+ 475              		.loc 1 149 0
+ 476              		.cfi_startproc
+ 477              		@ Function supports interworking.
+ 478              		@ args = 0, pretend = 0, frame = 0
+ 479              		@ frame_needed = 0, uses_anonymous_args = 0
+ 480              	.LVL20:
+ 481 0330 10402DE9 		stmfd	sp!, {r4, lr}
+ 482              	.LCFI8:
+ 483              		.cfi_def_cfa_offset 8
+ 484              		.cfi_offset 14, -4
+ 485              		.cfi_offset 4, -8
+ 486              		.loc 1 149 0
+ 487 0334 0040A0E1 		mov	r4, r0
+ 150:../Library/itg3200/ITG3200.cpp **** 	zr -= z_cal;
+ 488              		.loc 1 150 0
+ 489 0338 FA00D0E1 		ldrsh	r0, [r0, #10]
+ 490              	.LVL21:
+ 491 033c FEFFFFEB 		bl	__floatsisf
+ 492 0340 0010A0E1 		mov	r1, r0
+ 493 0344 140094E5 		ldr	r0, [r4, #20]	@ float
+ 494 0348 FEFFFFEB 		bl	__subsf3
+ 151:../Library/itg3200/ITG3200.cpp **** 	zr = zr/14.375;
+ 495              		.loc 1 151 0
+ 496 034c 0C109FE5 		ldr	r1, .L19
+ 497 0350 FEFFFFEB 		bl	__divsf3
+ 498 0354 140084E5 		str	r0, [r4, #20]	@ float
+ 152:../Library/itg3200/ITG3200.cpp **** 	return zr;
+ 153:../Library/itg3200/ITG3200.cpp **** }
+ 499              		.loc 1 153 0
+ 500 0358 1040BDE8 		ldmfd	sp!, {r4, lr}
+ 501 035c 1EFF2FE1 		bx	lr
+ 502              	.L20:
+ 503              		.align	2
+ 504              	.L19:
+ 505 0360 00006641 		.word	1097203712
+ 506              		.cfi_endproc
+ 507              	.LFE10:
+ 509              		.global	__addsf3
+ 510              		.align	2
+ 511              		.global	_ZN8cITG32007getTempEv
+ 513              	_ZN8cITG32007getTempEv:
+ 514              	.LFB11:
+ 154:../Library/itg3200/ITG3200.cpp **** 
+ 155:../Library/itg3200/ITG3200.cpp **** float cITG3200::getTemp(void)
+ 156:../Library/itg3200/ITG3200.cpp **** {
+ 515              		.loc 1 156 0
+ 516              		.cfi_startproc
+ 517              		@ Function supports interworking.
+ 518              		@ args = 0, pretend = 0, frame = 0
+ 519              		@ frame_needed = 0, uses_anonymous_args = 0
+ 520              	.LVL22:
+ 521 0364 10402DE9 		stmfd	sp!, {r4, lr}
+ 522              	.LCFI9:
+ 523              		.cfi_def_cfa_offset 8
+ 524              		.cfi_offset 14, -4
+ 525              		.cfi_offset 4, -8
+ 526              		.loc 1 156 0
+ 527 0368 0040A0E1 		mov	r4, r0
+ 157:../Library/itg3200/ITG3200.cpp **** 	tempr = -13200-tempr;	//Get the offset temp
+ 528              		.loc 1 157 0
+ 529 036c 181094E5 		ldr	r1, [r4, #24]	@ float
+ 530 0370 1C009FE5 		ldr	r0, .L22
+ 531              	.LVL23:
+ 532 0374 FEFFFFEB 		bl	__subsf3
+ 158:../Library/itg3200/ITG3200.cpp **** 	tempr = tempr/280;	//Convert the offset to degree C
+ 533              		.loc 1 158 0
+ 534 0378 18109FE5 		ldr	r1, .L22+4
+ 535 037c FEFFFFEB 		bl	__divsf3
+ 159:../Library/itg3200/ITG3200.cpp **** 	tempr += 35;	//Add 35 degrees C to compensate for the offset
+ 536              		.loc 1 159 0
+ 537 0380 14109FE5 		ldr	r1, .L22+8
+ 538 0384 FEFFFFEB 		bl	__addsf3
+ 539 0388 180084E5 		str	r0, [r4, #24]	@ float
+ 160:../Library/itg3200/ITG3200.cpp **** 	return tempr;
+ 161:../Library/itg3200/ITG3200.cpp **** }
+ 540              		.loc 1 161 0
+ 541 038c 1040BDE8 		ldmfd	sp!, {r4, lr}
+ 542 0390 1EFF2FE1 		bx	lr
+ 543              	.L23:
+ 544              		.align	2
+ 545              	.L22:
+ 546 0394 00404EC6 		.word	-967950336
+ 547 0398 00008C43 		.word	1133248512
+ 548 039c 00000C42 		.word	1108082688
+ 549              		.cfi_endproc
+ 550              	.LFE11:
+ 552              		.align	2
+ 553              		.global	_ZN8cITG320020setCalibrationValuesEiii
+ 555              	_ZN8cITG320020setCalibrationValuesEiii:
+ 556              	.LFB12:
+ 162:../Library/itg3200/ITG3200.cpp **** 
+ 163:../Library/itg3200/ITG3200.cpp **** void cITG3200::setCalibrationValues(int x, int y, int z)
+ 164:../Library/itg3200/ITG3200.cpp **** {
+ 557              		.loc 1 164 0
+ 558              		.cfi_startproc
+ 559              		@ Function supports interworking.
+ 560              		@ args = 0, pretend = 0, frame = 0
+ 561              		@ frame_needed = 0, uses_anonymous_args = 0
+ 562              		@ link register save eliminated.
+ 563              	.LVL24:
+ 165:../Library/itg3200/ITG3200.cpp **** 	x_cal=x;
+ 564              		.loc 1 165 0
+ 565 03a0 B610C0E1 		strh	r1, [r0, #6]	@ movhi
+ 166:../Library/itg3200/ITG3200.cpp **** 	y_cal=y;
+ 566              		.loc 1 166 0
+ 567 03a4 B820C0E1 		strh	r2, [r0, #8]	@ movhi
+ 167:../Library/itg3200/ITG3200.cpp **** 	z_cal=z;
+ 568              		.loc 1 167 0
+ 569 03a8 BA30C0E1 		strh	r3, [r0, #10]	@ movhi
+ 168:../Library/itg3200/ITG3200.cpp **** }
+ 570              		.loc 1 168 0
+ 571 03ac 1EFF2FE1 		bx	lr
+ 572              		.cfi_endproc
+ 573              	.LFE12:
+ 575              		.align	2
+ 576              		.global	_ZN8cITG32007getXcalEv
+ 578              	_ZN8cITG32007getXcalEv:
+ 579              	.LFB13:
+ 169:../Library/itg3200/ITG3200.cpp **** 
+ 170:../Library/itg3200/ITG3200.cpp **** int16_t cITG3200::getXcal(void)
+ 171:../Library/itg3200/ITG3200.cpp **** {
+ 580              		.loc 1 171 0
+ 581              		.cfi_startproc
+ 582              		@ Function supports interworking.
+ 583              		@ args = 0, pretend = 0, frame = 0
+ 584              		@ frame_needed = 0, uses_anonymous_args = 0
+ 585              		@ link register save eliminated.
+ 586              	.LVL25:
+ 172:../Library/itg3200/ITG3200.cpp **** 	return x_cal;
+ 173:../Library/itg3200/ITG3200.cpp **** }
+ 587              		.loc 1 173 0
+ 588 03b0 F600D0E1 		ldrsh	r0, [r0, #6]
+ 589              	.LVL26:
+ 590 03b4 1EFF2FE1 		bx	lr
+ 591              		.cfi_endproc
+ 592              	.LFE13:
+ 594              		.align	2
+ 595              		.global	_ZN8cITG32007getYcalEv
+ 597              	_ZN8cITG32007getYcalEv:
+ 598              	.LFB14:
+ 174:../Library/itg3200/ITG3200.cpp **** 
+ 175:../Library/itg3200/ITG3200.cpp **** int16_t cITG3200::getYcal(void)
+ 176:../Library/itg3200/ITG3200.cpp **** {
+ 599              		.loc 1 176 0
+ 600              		.cfi_startproc
+ 601              		@ Function supports interworking.
+ 602              		@ args = 0, pretend = 0, frame = 0
+ 603              		@ frame_needed = 0, uses_anonymous_args = 0
+ 604              		@ link register save eliminated.
+ 605              	.LVL27:
+ 177:../Library/itg3200/ITG3200.cpp **** 	return y_cal;
+ 178:../Library/itg3200/ITG3200.cpp **** }
+ 606              		.loc 1 178 0
+ 607 03b8 F800D0E1 		ldrsh	r0, [r0, #8]
+ 608              	.LVL28:
+ 609 03bc 1EFF2FE1 		bx	lr
+ 610              		.cfi_endproc
+ 611              	.LFE14:
+ 613              		.align	2
+ 614              		.global	_ZN8cITG32007getZcalEv
+ 616              	_ZN8cITG32007getZcalEv:
+ 617              	.LFB15:
+ 179:../Library/itg3200/ITG3200.cpp **** 
+ 180:../Library/itg3200/ITG3200.cpp **** int16_t cITG3200::getZcal(void)
+ 181:../Library/itg3200/ITG3200.cpp **** {
+ 618              		.loc 1 181 0
+ 619              		.cfi_startproc
+ 620              		@ Function supports interworking.
+ 621              		@ args = 0, pretend = 0, frame = 0
+ 622              		@ frame_needed = 0, uses_anonymous_args = 0
+ 623              		@ link register save eliminated.
+ 624              	.LVL29:
+ 182:../Library/itg3200/ITG3200.cpp **** 	return z_cal;
+ 183:../Library/itg3200/ITG3200.cpp **** }
+ 625              		.loc 1 183 0
+ 626 03c0 FA00D0E1 		ldrsh	r0, [r0, #10]
+ 627              	.LVL30:
+ 628 03c4 1EFF2FE1 		bx	lr
+ 629              		.cfi_endproc
+ 630              	.LFE15:
+ 632              		.section	.text.startup,"ax",%progbits
+ 633              		.align	2
+ 635              	_GLOBAL__sub_I_gyro:
+ 636              	.LFB17:
+ 637              		.loc 1 183 0
+ 638              		.cfi_startproc
+ 639              		@ Function supports interworking.
+ 640              		@ args = 0, pretend = 0, frame = 0
+ 641              		@ frame_needed = 0, uses_anonymous_args = 0
+ 642              	.LVL31:
+ 643 0000 04E02DE5 		str	lr, [sp, #-4]!
+ 644              	.LCFI10:
+ 645              		.cfi_def_cfa_offset 4
+ 646              		.cfi_offset 14, -4
+ 647              	.LBB7:
+ 648              	.LBB8:
+  36:../Library/itg3200/ITG3200.cpp **** cITG3200 gyro(0, ITG_ADDR);
+ 649              		.loc 1 36 0
+ 650 0004 10009FE5 		ldr	r0, .L29
+ 651 0008 0010A0E3 		mov	r1, #0
+ 652 000c D020A0E3 		mov	r2, #208
+ 653 0010 FEFFFFEB 		bl	_ZN8cITG3200C1Eic
+ 654              	.LBE8:
+ 655              	.LBE7:
+ 656              		.loc 1 183 0
+ 657 0014 04E09DE4 		ldr	lr, [sp], #4
+ 658 0018 1EFF2FE1 		bx	lr
+ 659              	.L30:
+ 660              		.align	2
+ 661              	.L29:
+ 662 001c 00000000 		.word	.LANCHOR0
+ 663              		.cfi_endproc
+ 664              	.LFE17:
+ 666              		.section	.ctors,"aw",%progbits
+ 667              		.align	2
+ 668 0000 00000000 		.word	_GLOBAL__sub_I_gyro
+ 669              		.global	gyro
+ 670              		.global	_ZN8cITG3200C1Eic
+ 671              		.set	_ZN8cITG3200C1Eic,_ZN8cITG3200C2Eic
+ 672              		.bss
+ 673              		.align	2
+ 674              		.set	.LANCHOR0,. + 0
+ 677              	gyro:
+ 678 0000 00000000 		.space	40
+ 678      00000000 
+ 678      00000000 
+ 678      00000000 
+ 678      00000000 
+ 679              		.text
+ 680              	.Letext0:
+ 681              		.file 2 "../Library/i2c/I2C.h"
+ 682              		.file 3 "../Library/itg3200/ITG3200.h"
+ 683              		.file 4 "/opt/local/lib/gcc/arm-elf/4.6.1/../../../../arm-elf/include/stdint.h"
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 ITG3200.cpp
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cctUyX6H.s:5      .text:0000000000000000 $a
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cctUyX6H.s:8      .text:0000000000000000 _ZN8cITG3200C2Eic
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cctUyX6H.s:53     .text:0000000000000034 _ZN8cITG32005writeEPcc
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cctUyX6H.s:88     .text:000000000000005c _ZN8cITG32004readEPcc
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cctUyX6H.s:129    .text:0000000000000094 _ZN8cITG32005beginEv
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cctUyX6H.s:219    .text:000000000000014c _ZN8cITG32006updateEv
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cctUyX6H.s:313    .text:0000000000000218 _ZN8cITG32009calibrateEv
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cctUyX6H.s:395    .text:00000000000002c8 _ZN8cITG32004getXEv
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cctUyX6H.s:427    .text:00000000000002f8 $d
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cctUyX6H.s:431    .text:00000000000002fc $a
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cctUyX6H.s:434    .text:00000000000002fc _ZN8cITG32004getYEv
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cctUyX6H.s:466    .text:000000000000032c $d
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cctUyX6H.s:470    .text:0000000000000330 $a
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cctUyX6H.s:473    .text:0000000000000330 _ZN8cITG32004getZEv
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cctUyX6H.s:505    .text:0000000000000360 $d
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cctUyX6H.s:510    .text:0000000000000364 $a
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cctUyX6H.s:513    .text:0000000000000364 _ZN8cITG32007getTempEv
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cctUyX6H.s:546    .text:0000000000000394 $d
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cctUyX6H.s:552    .text:00000000000003a0 $a
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cctUyX6H.s:555    .text:00000000000003a0 _ZN8cITG320020setCalibrationValuesEiii
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cctUyX6H.s:578    .text:00000000000003b0 _ZN8cITG32007getXcalEv
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cctUyX6H.s:597    .text:00000000000003b8 _ZN8cITG32007getYcalEv
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cctUyX6H.s:616    .text:00000000000003c0 _ZN8cITG32007getZcalEv
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cctUyX6H.s:633    .text.startup:0000000000000000 $a
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cctUyX6H.s:635    .text.startup:0000000000000000 _GLOBAL__sub_I_gyro
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cctUyX6H.s:8      .text:0000000000000000 _ZN8cITG3200C1Eic
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cctUyX6H.s:662    .text.startup:000000000000001c $d
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cctUyX6H.s:667    .ctors:0000000000000000 $d
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cctUyX6H.s:677    .bss:0000000000000000 gyro
+/var/folders/vb/2fcwf0x52qn_fy1j7_hx1lpr0000gn/T//cctUyX6H.s:673    .bss:0000000000000000 $d
+                     .debug_frame:0000000000000010 $d
+
+UNDEFINED SYMBOLS
+_ZN3I2CC2Ev
+_ZN3I2C4sendEcPccc
+_ZN3I2C9configureEv
+__floatsisf
+__fixsfsi
+delay_ms
+__subsf3
+__divsf3
+__addsf3
