@@ -66,6 +66,8 @@ char sensors_updated=0;
 char sensor_string[70]="";
 char sensor_log_string[255]="";
 
+char gps_string[200]="";
+
 cMemory sensorData;
 cMemory gpsData;
 cMemory configData;
@@ -154,7 +156,8 @@ int main (void)
 			
 			if(configuration.log_gps){
 				strcpy(gps.message, uart1Message);
-				gpsData.save(gps.message);
+				sprintf(gps_string, "%06ld\n%s",millis(),gps.message);
+				gpsData.save(gps_string);
 			}
 
 			if(configuration.output_messages >=2)rprintf("%s\n", gps.message);
