@@ -66,7 +66,7 @@ char sensors_updated=0;
 char sensor_string[70]="";
 char sensor_log_string[255]="";
 
-char gps_string[200]="";
+char gps_string[300]="";
 
 cMemory sensorData;
 cMemory gpsData;
@@ -149,26 +149,26 @@ int main (void)
 			VICIntEnable |= INT_TIMER0;
 		}
 		
-		if(uart1MessageComplete)
+		if(uart0MessageComplete)
 		{
-			VICIntEnClr |= INT_UART1;
-			uart1MessageComplete=0;
+			VICIntEnClr |= INT_UART0;
+			uart0MessageComplete=0;
 			
 			if(configuration.log_gps){
-				strcpy(gps.message, uart1Message);
+				strcpy(gps.message, uart0Message);
 				sprintf(gps_string, "%06ld\n%s",millis(),gps.message);
 				gpsData.save(gps_string);
 			}
 
 			if(configuration.output_messages >=2)rprintf("%s\n", gps.message);
 			
-			VICIntEnable |= INT_UART1;
+			VICIntEnable |= INT_UART0;
 		}
-		
-		if(uart0MessageComplete)
+
+		if(uart1MessageComplete)
 		{
 			VICIntEnClr |= INT_TIMER0|INT_UART1|INT_UART0;
-			uart0MessageComplete=0;
+			uart1MessageComplete=1;
 			
 			//Save all the current data and close the files.
 			if(configuration.log_gps)gpsData.close();

@@ -15,7 +15,7 @@
 #define INT_UART0	(1<<6)
 
 extern char uart0MessageComplete;
-extern char uart0Message[75];
+extern char uart0Message[250];
 void ISR_UART0(void);
 
 #endif

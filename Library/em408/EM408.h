@@ -25,7 +25,7 @@ class cEM408
 	public:
 		//Variables
 		sGPSdata data;
-		char message[150];
+		char message[250];
 		char updated;
 	
 		//Constructor doesn't do anything
