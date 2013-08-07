@@ -45,7 +45,7 @@ extern "C"{
 #include "ITG3200.h"
 #include "sensor.h"
 #include "memory.h"
-#include "EM408.h"
+#include "FGPMMOPA6H.h"
 
 //*******************************************************
 //					Core Functions
@@ -127,8 +127,8 @@ int main (void)
 	uart0RxInt(RX0_TRIG_LEV_0);
 	
 	LEDoff();
-	VICIntEnable |= INT_UART0;
-	if(configuration.log_gps)VICIntEnable |= INT_UART1;
+	VICIntEnable |= INT_UART1;
+	if(configuration.log_gps)VICIntEnable |= INT_UART0;
 	if(configuration.log_sensor)VICIntEnable |= INT_TIMER0;
 	while(1)
 	{
@@ -333,8 +333,8 @@ int main (void)
 void bootUp(void)
 {
 	//Initialize UART for RPRINTF
-    rprintf_devopen(putc_serial0); //Init rprintf
-	init_serial0(9600);		
+    rprintf_devopen(putc_serial1); //Init rprintf
+	init_serial1(9600);		
 	
 	//Initialize I/O Ports and Peripherals
 	IODIR0 |= (LED| XBEE_EN);
@@ -378,16 +378,12 @@ void initPeripherals(void)
 	gps.begin(9600);
 	delay_ms(100);
 	gps.on();
-	delay_ms(500);
-	gps.disable();
-	delay_ms(50);
-	for(int i=0; i<6; i++)
-	{
-		if(configuration.gps_messages[i]==1)gps.enable(i, 1);
-		delay_ms(50);
-	}
-	
-	delay_ms(100);
+	delay_ms(1000);
+	gps.enable(configuration.gps_messages);
+	uart0rows = 0;
+	for (int i = 0; configuration.gps_messages[i] != '\0'; i++)if (configuration.gps_messages[i] == 1) uart0rows++;
+	if(uart0rows==0) uart0rows=1;
+	delay_ms(150);
 }
 
 void runTest(void)
@@ -409,8 +405,8 @@ void runTest(void)
 	
 	//Enable the serial port
 	//Initialize UART for RPRINTF
-    rprintf_devopen(putc_serial0); //Init rprintf
-	init_serial0(9600);	
+    rprintf_devopen(putc_serial1); //Init rprintf
+	init_serial1(9600);	
 
 	//Test the GPS I/O
 	IODIR0 &= ~((1<<8)|(1<<9)|(1<<12));	//Set P0.8, P0.9 and P0.12 to inputs

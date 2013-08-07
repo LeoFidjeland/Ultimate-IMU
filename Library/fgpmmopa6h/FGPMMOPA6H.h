@@ -1,5 +1,5 @@
-#ifndef EM408_h
-#define EM408_h
+#ifndef FGPMMOPA6H_h
+#define FGPMMOPA6H_h
 
 //Assumes Enable Pin is on Port 0
 typedef struct{
@@ -20,7 +20,7 @@ typedef struct{
 
 } sGPSdata;
 
-class cEM408
+class cFGPMMOPA6H
 {
 	public:
 		//Variables
@@ -29,7 +29,7 @@ class cEM408
 		char updated;
 	
 		//Constructor doesn't do anything
-		cEM408(unsigned int port, unsigned int en_pin);
+		cFGPMMOPA6H(unsigned int port, unsigned int en_pin);
 		//Used to configure LPC for appropriate serial port and baud rate
 		//Must be called before any GPS functions can be used.
 		void begin(unsigned int baud_rate);
@@ -38,11 +38,9 @@ class cEM408
 		//Used to disable the GPS module
 		void off(void);
 		//Used to enable a gps message to a specific frequency
-		void enable(unsigned const char type, unsigned const char freq);
+		void enable(const char type[]);
 		//Used to enable all gps messages
 		void enable(void);
-		//Used to disable a gps message
-		void disable(unsigned const char type);
 		//Used to disable all gps messages
 		void disable(void);
 		//Used to parse a GPS message
@@ -55,11 +53,11 @@ class cEM408
 		
 	private:
 		//Used to configure the frequency of a GPS message type
-		void configure(unsigned const char type, unsigned const char freq);		
+		void configure(const char type[]);		
 		unsigned int _en_pin;
 		unsigned int _port;
 };
-extern cEM408 gps;
+extern cFGPMMOPA6H gps;
 
 #define GPS_CHECKSUM(mstr, mx)  {mx=0; for(unsigned int mi = 0; mi < strlen(mstr);mi++ ) mx ^= mstr[mi];}
 

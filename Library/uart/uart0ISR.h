@@ -16,6 +16,7 @@
 
 extern char uart0MessageComplete;
 extern char uart0Message[250];
+extern char uart0rows;
 void ISR_UART0(void);
 
 #endif

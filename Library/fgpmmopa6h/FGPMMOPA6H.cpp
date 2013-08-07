@@ -1,48 +1,11 @@
 /*
-	EM408 Library
+	FGPMMOPA6H Library
 	
-	Assumes enable pin is on port 0.
+	created 6 Aug 2013
+	by Leo Fidjeland
 	
-	created 20 Aug 2009
-	by Ryan Owens
-	http://www.sparkfun.com
-	
-	Example code:
-	char c;
-	char final_message[100];
-	char values[100];
-	
-	gps.begin(4800);
-	gps.on();
-	delay_ms(500);
-	gps.disable();
-	delay_ms(100);
-	gps.enable(4,1);
-	delay_ms(1000);	
-	c=getc1();
-	*final_message = '\0';
-	*values = '\0';
-	while(c != '\r')
-	{
-		if(c!='\n')
-		{
-			sprintf(final_message, "%c", c);
-			strcat(values, final_message);
-		}
-		c=getc1();
-	}
-	status=gps.parse(values);
-	if(status>0)
-	{
-		rprintf("\r\rParse Result: %d\r", status);
-		rprintf("Time: %s\r",gps.data.time);
-		rprintf("Status: %s\r", gps.data.status);
-		rprintf("Lat: %s %s\r", gps.data.latitude.position, gps.data.latitude.direction);
-		rprintf("Long: %s %s\r", gps.data.longitude.position, gps.data.longitude.direction);
-	}	
- 
 */
-#include "EM408.h"
+#include "FGPMMOPA6H.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include "string.h"
@@ -58,15 +21,15 @@ extern "C"{
 #define GLOBALOBJECT
 //#define DEBUG
 
-cEM408 gps(1, 12);
+cFGPMMOPA6H gps(0, 12);
 
-cEM408::cEM408(unsigned int port, unsigned int en_pin)
+cFGPMMOPA6H::cFGPMMOPA6H(unsigned int port, unsigned int en_pin)
 {
 	_en_pin=en_pin;
 	_port=port;
 }
 
-void cEM408::begin(unsigned int baud_rate)
+void cFGPMMOPA6H::begin(unsigned int baud_rate)
 {
 	//Make sure the Enable pin is set up correctly
 	PINSEL0 &= ~(3<<((_en_pin+1)*2));	//Set the pin as GPIO in the Pin Select Register
@@ -81,44 +44,35 @@ void cEM408::begin(unsigned int baud_rate)
 	updated=0;
 }
 
-void cEM408::on(void)
+void cFGPMMOPA6H::on(void)
 {
 	IOSET0 = (1<<_en_pin);	//Turns the GPS module on by setting the enable pin high.
 	//delay_ms(500);
 }
 
-void cEM408::off(void)
+void cFGPMMOPA6H::off(void)
 {
 	IOCLR0 = (1<<_en_pin);	//Turns the GPS module off by setting the enable pin low.
 }
 
-void cEM408::enable(unsigned const char type, unsigned const char freq)
+void cFGPMMOPA6H::enable( const char type[])
 {
-	configure(type, freq);
+	configure(type);
 }
 
-void cEM408::enable(void)
+void cFGPMMOPA6H::enable(void)
 {
-	for(unsigned char type=0; type < 6; type++)
-	{
-		configure((unsigned const char)type, 1);	//Disable all of the GPS messages by setting frequencies to 0
-	}
+	const char type[6] = {1,1,1,1,1,1};
+	configure(type);	//Enable all of the GPS messages by setting frequencies to 1
 }
 
-void cEM408::disable(void)
+void cFGPMMOPA6H::disable(void)
 {
-	for(unsigned char type=0; type < 6; type++)
-	{
-		configure((unsigned const char)type, 0);	//Disable all of the GPS messages by setting frequencies to 0
-	}
+	const char type[6] = {0,0,0,0,0,0};
+	configure(type);	//Disable all of the GPS messages by setting frequencies to 0
 }
 
-void cEM408::disable(unsigned const char type)
-{
-	configure(type, 0);	//Disable the message type by setting the update frequency to 0
-}
-
-int cEM408::parse(char * inmessage)
+int cFGPMMOPA6H::parse(char * inmessage)
 {
 	char delim[] = ",";	//GPS message delimiter is a comma
 	char msg_cksum=0;
@@ -157,12 +111,12 @@ int cEM408::parse(char * inmessage)
 	return 1;
 }
 
-void cEM408::configure(unsigned const char type, unsigned const char freq)
+void cFGPMMOPA6H::configure(const char type[])
 {
-	char gps_string[20];
+	char gps_string[46];
 	unsigned char cksum=0;
 	
-	sprintf( gps_string, "PSRF103,%02d,00,%02d,01", type, freq );
+	sprintf( gps_string, "PMTK314,%01d,%01d,%01d,%01d,%01d,%01d,0,0,0,0,0,0,0,0,0,0,0,0,0", type[GLL], type[RMC], type[VTG], type[GGA], type[GSA], type[GSV] );
 	GPS_CHECKSUM(gps_string,cksum);
 
 	if(_port == 1)

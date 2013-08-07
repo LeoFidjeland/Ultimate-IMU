@@ -13,7 +13,8 @@
 
 char uart0Message[250];
 int m0index=0;
-int row=1;
+char uart0rows=1;//default 1 line incoming
+char row=1;
 char uart0MessageComplete=0;
 
 void ISR_UART0(void)
@@ -22,7 +23,7 @@ void ISR_UART0(void)
 	
 	if(val=='\r'){ 	
 		uart0Message[m0index++]='\n';
-		if(row==4){
+		if(row==uart0rows){
 			uart0Message[m0index++]='\0';
 			m0index=0;
 			row=1;
